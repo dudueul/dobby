@@ -1,0 +1,6 @@
+# age recipients (PUBLIC keys only). The matching PRIVATE keys live on hardware
+# tokens / paper in a safe and never touch this box. Encrypt to ALL of them so
+# losing one token never loses the archive. Copy to /opt/dobby/secrets/recipients.txt
+age1yubikey1qexampletoken1publickeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+age1yubikey1qexampletoken2publickeyxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+age1qpaperbackupkeyinasafexxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
