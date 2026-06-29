@@ -1,0 +1,16 @@
+[Unit]
+Description=dobby maintenance — health check + disk-pressure eviction
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/dobby
+# Health check emits problems to the journal; on low disk it runs an early,
+# safe eviction of already-archived artifacts (never un-archived data).
+ExecStart=/bin/bash -c '/opt/dobby/provisioning/healthcheck.sh; \
+  free=$(df --output=pcent /srv/dobby/media | tail -1 | tr -dc 0-9); \
+  avail=$((100-free)); \
+  if [ "$avail" -lt "${DISK_LOW_WATER_PCT:-15}" ]; then \
+    /usr/bin/docker compose run --rm archive-job pressure; fi'
+EnvironmentFile=/opt/dobby/.env

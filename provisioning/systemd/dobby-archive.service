@@ -1,0 +1,9 @@
+[Unit]
+Description=dobby monthly archive age-out
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/dobby
+ExecStart=/usr/bin/docker compose run --rm archive-job run
