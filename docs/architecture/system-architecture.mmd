@@ -1,0 +1,60 @@
+flowchart TD
+  subgraph Apple[Apple ecosystem]
+    Home[Apple Home / Siri / Wallet Home Key]
+    Hub[Apple TV / HomePod]
+  end
+
+  subgraph Edge[Devices on the LAN]
+    Nuki[Nuki locks + Keypad 2 NFC + physical key]
+    Cams[PoE cameras VLAN30]
+    Zig[Zigbee sensors/lights]
+    ZW[Z-Wave outdoor motion/relays]
+    Pres[mmWave room presence]
+    Spk[Room speakers / snapclients]
+  end
+
+  subgraph Hub[dobby mini-PC — Ubuntu Server, Docker]
+    MQTT[Mosquitto MQTT]
+    HA[Home Assistant]
+    Z2M[Zigbee2MQTT]
+    ZUI[Z-Wave JS UI]
+    Frig[Frigate NVR + go2rtc]
+    Scr[Scrypted → HKSV]
+    PG[(PostgreSQL audit + catalog)]
+    Graf[Grafana]
+    Ing[nuki-ingestor]
+    Corr[event-correlator]
+    MA[Music Assistant]
+    Snap[Snapserver]
+    Arc[archive-job]
+    Disk[(LUKS video disk<br/>full 1y · event 2y)]
+  end
+
+  subgraph Cloud[Outbound only — encrypted]
+    B2[(Backblaze B2<br/>cold, Object-Lock)]
+    Push[Notifications]
+  end
+
+  Home --> Hub --> Nuki
+  Nuki --> MQTT
+  Cams --> Frig
+  Zig --> Z2M --> MQTT
+  ZW --> ZUI --> MQTT
+  Pres --> HA
+  MQTT --> HA
+  MQTT --> Ing --> PG
+  Frig --> Disk
+  Frig --> PG
+  Frig --> Corr
+  Scr --> Home
+  HA --> PG
+  HA --> Corr
+  Corr --> HA
+  PG --> Graf
+  HA --> MA --> Snap --> Spk
+  Disk --> Arc
+  PG --> Arc
+  Arc -->|verify then prune| Disk
+  Arc -->|age/encrypt + PutObject| B2
+  Corr --> Push
+  HA --> Push
