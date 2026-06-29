@@ -1,0 +1,62 @@
+# Lighting — motion + lux gated, with manual override and house-mode awareness.
+
+input_boolean:
+  light_override_front_porch:
+    name: Front porch manual override
+    icon: mdi:gesture-tap-button
+
+automation:
+  - id: light_motion_front_porch
+    alias: "Lighting: front porch motion (dark only)"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.front_porch_motion
+        to: "on"
+    condition:
+      - condition: state
+        entity_id: input_boolean.light_override_front_porch
+        state: "off"
+      - condition: numeric_state
+        entity_id: sensor.front_porch_lux
+        below: 15            # don't switch on in daylight
+    action:
+      - service: light.turn_on
+        target: { entity_id: light.front_porch }
+        data: { brightness_pct: 80 }
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.front_porch_motion
+            to: "off"
+            for: "00:03:00"
+      - service: light.turn_off
+        target: { entity_id: light.front_porch }
+
+  - id: light_outdoor_dusk_dawn
+    alias: "Lighting: outdoor dusk-to-dawn"
+    trigger:
+      - platform: sun
+        event: sunset
+        offset: "-00:15:00"
+      - platform: sun
+        event: sunrise
+        offset: "00:15:00"
+    action:
+      - choose:
+          - conditions: "{{ trigger.event == 'sunset' }}"
+            sequence:
+              - service: light.turn_on
+                target: { entity_id: light.driveway }
+                data: { brightness_pct: 40 }
+        default:
+          - service: light.turn_off
+            target: { entity_id: light.driveway }
+
+  - id: light_away_all_off
+    alias: "Lighting: all interior off when away"
+    trigger:
+      - platform: state
+        entity_id: input_select.house_mode
+        to: away
+    action:
+      - service: light.turn_off
+        target: { entity_id: all }

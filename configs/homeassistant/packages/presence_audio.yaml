@@ -1,0 +1,138 @@
+# Presence-driven whole-house audio. As a person enters a room, that room's
+# Music Assistant player ramps to a comfortable volume; when they leave (grace
+# period), it fades out. Quiet hours, per-room opt-out, volume caps, and a
+# "don't fight the human" backoff are all enforced. See docs/06.
+
+input_boolean:
+  audio_enable_kitchen: { name: Audio kitchen, initial: true }
+  audio_enable_living:  { name: Audio living,  initial: true }
+  audio_party_mode:     { name: Whole-house party, initial: false }
+
+input_number:
+  audio_target_kitchen: { name: Kitchen target vol, min: 0, max: 1, step: 0.05, initial: 0.4 }
+  audio_max_kitchen:    { name: Kitchen max vol,    min: 0, max: 1, step: 0.05, initial: 0.6 }
+  audio_target_living:  { name: Living target vol,  min: 0, max: 1, step: 0.05, initial: 0.35 }
+  audio_max_living:     { name: Living max vol,     min: 0, max: 1, step: 0.05, initial: 0.55 }
+
+input_datetime:
+  audio_manual_kitchen: { name: Kitchen last manual, has_date: true, has_time: true }
+  audio_manual_living:  { name: Living last manual,  has_date: true, has_time: true }
+
+script:
+  audio_follow_room:
+    description: Ramp a room player to its target volume over ~4s.
+    fields:
+      room: { description: room key, example: kitchen }
+    sequence:
+      - variables:
+          player: "media_player.{{ room }}"
+          target: "{{ states('input_number.audio_target_' ~ room) | float }}"
+          cap: "{{ states('input_number.audio_max_' ~ room) | float }}"
+          goal: "{{ [target, cap] | min }}"
+      - choose:
+          - conditions: "{{ is_state(player, 'idle') or is_state(player, 'paused') }}"
+            sequence:
+              - service: media_player.media_play
+                target: { entity_id: "{{ player }}" }
+      # stepped ramp so volume eases in rather than jumping
+      - repeat:
+          count: 8
+          sequence:
+            - service: media_player.volume_set
+              target: { entity_id: "{{ player }}" }
+              data:
+                volume_level: "{{ (goal * (repeat.index / 8)) | round(2) }}"
+            - delay: "00:00:00.5"
+
+  audio_release_room:
+    fields:
+      room: { description: room key }
+    sequence:
+      - variables: { player: "media_player.{{ room }}" }
+      - repeat:
+          count: 6
+          sequence:
+            - service: media_player.volume_set
+              target: { entity_id: "{{ player }}" }
+              data:
+                volume_level: "{{ (state_attr(player,'volume_level') | float(0)) * (1 - repeat.index/6) | round(2) }}"
+            - delay: "00:00:00.4"
+      - condition: state
+        entity_id: input_boolean.audio_party_mode
+        state: "off"
+      - service: media_player.media_pause
+        target: { entity_id: "{{ player }}" }
+
+automation:
+  # Record manual volume/source changes so we can back off for 15 minutes.
+  - id: audio_record_manual_touch
+    alias: "Audio: record manual touch"
+    trigger:
+      - platform: state
+        entity_id: [media_player.kitchen, media_player.living]
+        attribute: volume_level
+    condition:
+      - condition: template
+        value_template: "{{ trigger.context.user_id is not none }}"  # a human, not us
+    action:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: "input_datetime.audio_manual_{{ trigger.entity_id.split('.')[1] }}"
+        data: { datetime: "{{ now().isoformat() }}" }
+
+  # Enter: follow the person into the room.
+  - id: audio_enter_room
+    alias: "Audio: follow on room enter"
+    trigger:
+      - platform: state
+        entity_id: [binary_sensor.presence_kitchen, binary_sensor.presence_living]
+        to: "on"
+    variables:
+      room: "{{ trigger.entity_id.split('.')[1].replace('presence_','') }}"
+    condition:
+      - condition: state
+        entity_id: input_select.house_mode
+        state: home
+      - condition: state
+        entity_id: binary_sensor.quiet_hours
+        state: "off"
+      - condition: template
+        value_template: "{{ is_state('input_boolean.audio_enable_' ~ room, 'on') }}"
+      - condition: template
+        value_template: >
+          {{ (now() - states('input_datetime.audio_manual_' ~ room) | as_datetime
+              | default(now() - timedelta(hours=1))).total_seconds() > 900 }}
+    action:
+      - service: script.audio_follow_room
+        data: { room: "{{ room }}" }
+
+  # Leave: fade out after a grace period (mmWave so a still person still counts).
+  - id: audio_leave_room
+    alias: "Audio: release on room leave"
+    trigger:
+      - platform: state
+        entity_id: [binary_sensor.presence_kitchen, binary_sensor.presence_living]
+        to: "off"
+        for: "00:01:30"
+    variables:
+      room: "{{ trigger.entity_id.split('.')[1].replace('presence_','') }}"
+    action:
+      - service: script.audio_release_room
+        data: { room: "{{ room }}" }
+
+  # Whole-house party: group everything to one source until turned off.
+  - id: audio_party_mode
+    alias: "Audio: whole-house party toggle"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.audio_party_mode
+    action:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - service: media_player.join
+                target: { entity_id: media_player.kitchen }
+                data: { group_members: [media_player.living] }
+        default:
+          - service: media_player.unjoin
+            target: { entity_id: media_player.living }
