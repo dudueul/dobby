@@ -1,0 +1,70 @@
+# Frigate — local AI NVR. Detection on the Intel iGPU/NPU via OpenVINO (no Coral).
+mqtt:
+  host: mosquitto
+  user: "{FRIGATE_MQTT_USER}"
+  password: "{FRIGATE_MQTT_PASSWORD}"
+
+detectors:
+  ov:
+    type: openvino
+    device: GPU          # use 'NPU' on Core Ultra once /dev/accel is passed through
+
+model:
+  width: 300
+  height: 300
+  input_tensor: nhwc
+  input_pixel_format: bgr
+  path: /openvino-model/ssdlite_mobilenet_v2.xml
+  labelmap_path: /openvino-model/coco_91cl_bkgr.txt
+
+ffmpeg:
+  hwaccel_args: preset-vaapi   # QuickSync decode/transcode
+
+# Defaults applied to every camera; override per camera below.
+detect:
+  enabled: true
+  fps: 5
+record:
+  enabled: true
+  retain:
+    days: 1            # continuous buffer (local). Long retention is event-based.
+    mode: motion
+  events:
+    retain:
+      default: 30      # normal person/car/package event clips
+      objects:
+        person: 30
+snapshots:
+  enabled: true
+  bounding_box: true
+  retain:
+    default: 30
+
+go2rtc:
+  streams:
+    front_door:
+      - "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/main"
+
+cameras:
+  front_door:
+    ffmpeg:
+      inputs:
+        - path: "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/sub"
+          roles: [detect]
+        - path: "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/main"
+          roles: [record]
+    detect:
+      width: 640
+      height: 480
+    zones:
+      porch_zone:
+        coordinates: 0,480,640,480,640,200,0,200
+    objects:
+      track: [person, car, package]
+    review:
+      alerts:
+        labels: [person]
+    # Tamper/forced/night-person clips get longer retention via the
+    # event-correlator (it re-tags clips as class=incident → 365d / indefinite).
+
+# Add back_door, driveway, side_gate the same way once front_door is validated.
