@@ -1,0 +1,25 @@
+# secrets / runtime
+.env
+*.key
+*.pem
+recipients.txt
+secrets/
+configs/zigbee2mqtt/*.yaml.bak
+
+# service runtime data (bind-mounted volumes)
+data/
+media/
+configs/homeassistant/.storage/
+configs/homeassistant/home-assistant_v2.db*
+configs/homeassistant/*.log*
+configs/scrypted/
+configs/zwave-js-ui/
+configs/grafana/data/
+
+# os noise
+.DS_Store
+*.swp
+
+# python
+__pycache__/
+*.pyc

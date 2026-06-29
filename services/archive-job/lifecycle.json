@@ -1,0 +1,23 @@
+{
+  "_comment": "Apply once to the B2 bucket. Bucket is created with Object Lock enabled and a DEFAULT retention so every PUT is immutable until its horizon; the lifecycle then expires objects (final destruction). The application key used by archive-job must be PutObject-only (no delete/list).",
+  "objectLock": {
+    "mode": "governance",
+    "defaultRetentionDays": {
+      "full_video": 365,
+      "event_video": 730,
+      "incident": 3650
+    }
+  },
+  "lifecycleRules": [
+    {
+      "fileNamePrefix": "full_video/",
+      "daysFromUploadingToHiding": 365,
+      "daysFromHidingToDeleting": 1
+    },
+    {
+      "fileNamePrefix": "event_video/",
+      "daysFromUploadingToHiding": 1095,
+      "daysFromHidingToDeleting": 1
+    }
+  ]
+}

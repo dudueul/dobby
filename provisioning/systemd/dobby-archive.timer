@@ -1,0 +1,10 @@
+[Unit]
+Description=Monthly encrypted age-out to Backblaze B2
+
+[Timer]
+# 03:30 on the 1st of each month
+OnCalendar=*-*-01 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

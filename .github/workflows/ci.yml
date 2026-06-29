@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel a superseded run when new commits land on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install --quiet pytest pyyaml
+
+      - name: Byte-compile services
+        run: |
+          python -m py_compile \
+            services/nuki-ingestor/main.py \
+            services/event-correlator/main.py \
+            services/archive-job/archive.py \
+            services/archive-job/test_archive.py
+
+      - name: Pure-planner unit tests
+        run: python -m pytest -q services/archive-job/test_archive.py
+
+      - name: Validate YAML / JSON configs
+        run: python provisioning/validate-configs.py
+
+      - name: Lint docker-compose
+        run: |
+          cp .env.example .env
+          docker compose config -q
+          echo "docker compose config OK"
+
+      - name: Shell scripts parse
+        run: bash -n provisioning/*.sh

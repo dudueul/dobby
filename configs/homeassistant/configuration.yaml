@@ -1,0 +1,35 @@
+default_config:
+
+homeassistant:
+  name: Dobby
+  packages: !include_dir_named packages
+
+# Long-term audit goes to PostgreSQL (system-of-record), not the default SQLite.
+recorder:
+  db_url: !secret recorder_db_url
+  purge_keep_days: 30          # HA's own recorder; the audit DB keeps the history
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 127.0.0.1
+  # No external URL / no port-forward. Reach HA over WireGuard only.
+
+mqtt:
+  # Devices publish via Mosquitto; Zigbee2MQTT/Z-Wave JS UI use MQTT discovery.
+  broker: 127.0.0.1
+  username: !secret mqtt_user
+  password: !secret mqtt_password
+
+frontend:
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+
+# House mode + per-room audio controls used by the packages.
+input_select:
+  house_mode:
+    name: House mode
+    options: [home, away, night, guest]
+    initial: home
+    icon: mdi:home-account

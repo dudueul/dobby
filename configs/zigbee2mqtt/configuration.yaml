@@ -1,0 +1,27 @@
+# Zigbee2MQTT — Zigbee coordinator → MQTT.
+homeassistant: true            # publish HA MQTT discovery
+permit_join: false             # flip true only while pairing a device, then false
+
+mqtt:
+  base_topic: zigbee2mqtt
+  server: mqtt://mosquitto:1883
+  user: '!secret mqtt_user'
+  password: '!secret mqtt_password'
+
+serial:
+  port: /dev/ttyZIGBEE
+  adapter: ember                # ConBee II: deconz; SkyConnect/Sonoff-E: ember
+
+frontend:
+  port: 8080
+
+advanced:
+  network_key: GENERATE         # generated on first start; back it up
+  pan_id: GENERATE
+  ext_pan_id: GENERATE
+  log_level: warn
+  channel: 20                   # avoid Wi-Fi overlap (11/15/20/25)
+  last_seen: ISO_8601
+  legacy_api: false
+
+# secrets.yaml (same dir, gitignored) provides mqtt_user / mqtt_password.

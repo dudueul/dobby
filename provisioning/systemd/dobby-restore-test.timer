@@ -1,0 +1,9 @@
+[Unit]
+Description=Monthly restore-test for the dobby archive
+
+[Timer]
+OnCalendar=*-*-07 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
