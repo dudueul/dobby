@@ -12,7 +12,7 @@ The full shopping list with quantities, phasing, and budget is in
 |---|---|---|
 | Lock | **Nuki Smart Lock Pro (5th Gen)** or **Ultra** + **Keypad 2 NFC** | Apple Home Key (Aliro) + MQTT/Web API |
 | Apple hub | **Apple TV 4K** or **HomePod mini** | Home Key + HomeKit Secure Video + Thread border router |
-| Cameras | **Reolink RLC-820A / RLC-810A**, **Duo 3 PoE** (wide), **ColorX** (night) | RTSP/ONVIF → Frigate |
+| Cameras (NDAA-compliant) | **Hanwha Wisenet** (A/Q-series) · **Vivotek** (value) · **Axis** (premium, Lightfinder night) · **UniFi Protect G5** (ecosystem) | PoE RTSP/ONVIF dual-substream → Frigate |
 | Zigbee | **Home Assistant Connect ZBT-2** | Zigbee2MQTT (also a Thread border router via OTBR) |
 | Z-Wave | **Home Assistant Connect ZWA-2** (Z-Wave 800/LR); or **Aeotec Z-Stick 10 Pro** (Zigbee+Z-Wave in one) | Z-Wave JS UI |
 | Room presence | **Apollo R PRO-1** (PoE, ESPHome) wired; **Aqara FP300** battery; **Aqara FP2** for zones | ESPHome / Zigbee-Thread → HA |
@@ -20,6 +20,14 @@ The full shopping list with quantities, phasing, and budget is in
 | Lighting | **Shelly 1PM Gen4** (Wi-Fi+Zigbee+Matter+metering); Lutron Caséta for reliability | local MQTT → Mosquitto |
 | Audio player | **WiiM Pro Plus** (keeps AirPlay 2) / **WiiM Amp Pro** | Music Assistant / Snapcast |
 | Archive key | **Nitrokey HSM 2** (DKEK clone) or 2× **YubiKey 5** + paper | age / PKCS#11 envelope |
+
+**Cameras — NDAA note:** limited to NDAA §889-compliant brands. **Excluded:**
+Dahua and its OEMs (Amcrest, EmpireTech, Loryta) and Hikvision and its OEMs
+(Annke, LaView). **Reolink / Lorex** are verify-per-SKU (Chinese-made / formerly
+Dahua-owned) and are not used here. The compliant picks above are PoE + ONVIF/RTSP
+with dual substreams (confirm H.264 + substream per model). Budget ~$150–350/camera
+(≈30–80% more than the banned equivalents); for color-at-night use Axis Lightfinder
+or Hanwha low-light rather than Hikvision ColorVu.
 
 Notes:
 

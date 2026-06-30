@@ -1,0 +1,112 @@
+# Climate / HVAC automations for a single-zone heat pump exposed as climate.hvac
+# (Honeywell T6 Pro Z-Wave via Z-Wave JS UI). Temperatures are °F (US).
+#
+# IMPORTANT: O/B convention, AUX/E wiring, and compressor anti-short-cycle live
+# ON THE THERMOSTAT, not here — so they survive a hub crash. HA only writes
+# setpoints/modes and reads state. If HA is down, the T6 regulates standalone.
+
+input_number:
+  hvac_comfort_heat: { name: Comfort heat, min: 60, max: 78, step: 1, initial: 68, unit_of_measurement: "°F" }
+  hvac_comfort_cool: { name: Comfort cool, min: 68, max: 82, step: 1, initial: 75, unit_of_measurement: "°F" }
+  hvac_eco_heat:     { name: Eco/away heat, min: 50, max: 68, step: 1, initial: 62, unit_of_measurement: "°F" }
+  hvac_eco_cool:     { name: Eco/away cool, min: 74, max: 90, step: 1, initial: 80, unit_of_measurement: "°F" }
+  hvac_freeze_floor: { name: Freeze-protection floor, min: 40, max: 55, step: 1, initial: 45, unit_of_measurement: "°F" }
+
+input_datetime:
+  hvac_manual_touch: { name: HVAC last manual change, has_date: true, has_time: true }
+
+automation:
+  # Record a human setpoint change so automation backs off for 2 hours.
+  - id: hvac_record_manual_touch
+    alias: "HVAC: record manual setpoint touch"
+    trigger:
+      - platform: state
+        entity_id: climate.hvac
+        attribute: temperature
+    condition:
+      - condition: template
+        value_template: "{{ trigger.context.user_id is not none }}"
+    action:
+      - service: input_datetime.set_datetime
+        target: { entity_id: input_datetime.hvac_manual_touch }
+        data: { datetime: "{{ now().isoformat() }}" }
+
+  # Away setback.
+  - id: hvac_away_setback
+    alias: "HVAC: eco setback when away/night"
+    trigger:
+      - platform: state
+        entity_id: input_select.house_mode
+        to: [away, night]
+    condition:
+      - condition: template
+        value_template: >
+          {{ (now() - (states('input_datetime.hvac_manual_touch') | as_datetime
+              | default(now() - timedelta(hours=3)))).total_seconds() > 7200 }}
+    action:
+      - service: climate.set_temperature
+        target: { entity_id: climate.hvac }
+        data:
+          temperature: >
+            {% if is_state_attr('climate.hvac','hvac_action','cooling')
+                  or state_attr('climate.hvac','temperature')|float(70) >= 74 %}
+              {{ states('input_number.hvac_eco_cool') }}
+            {% else %}
+              {{ states('input_number.hvac_eco_heat') }}
+            {% endif %}
+
+  # Restore comfort on return home.
+  - id: hvac_home_restore
+    alias: "HVAC: restore comfort when home"
+    trigger:
+      - platform: state
+        entity_id: input_select.house_mode
+        to: home
+    action:
+      - service: climate.set_temperature
+        target: { entity_id: climate.hvac }
+        data:
+          temperature: >
+            {% if state_attr('climate.hvac','hvac_action') == 'cooling' %}
+              {{ states('input_number.hvac_comfort_cool') }}
+            {% else %}
+              {{ states('input_number.hvac_comfort_heat') }}
+            {% endif %}
+
+  # Hub-level freeze-protection safety net (the thermostat should also enforce
+  # its own low limit; this is a backstop). Forces heat to the floor if the
+  # indoor temperature drops below it, regardless of house mode.
+  - id: hvac_freeze_protection
+    alias: "HVAC: freeze protection floor"
+    trigger:
+      - platform: numeric_state
+        entity_id: climate.hvac
+        attribute: current_temperature
+        below: input_number.hvac_freeze_floor
+    action:
+      - service: climate.set_hvac_mode
+        target: { entity_id: climate.hvac }
+        data: { hvac_mode: heat }
+      - service: climate.set_temperature
+        target: { entity_id: climate.hvac }
+        data: { temperature: "{{ states('input_number.hvac_freeze_floor')|int + 3 }}" }
+      - service: notify.dobby_push
+        data:
+          title: "❄️ HVAC freeze protection engaged"
+          message: "Indoor {{ state_attr('climate.hvac','current_temperature') }}°F below floor — forcing heat."
+
+  # Operational incident: thermostat offline or action wedged.
+  - id: hvac_operational_incident
+    alias: "HVAC: operational incident"
+    trigger:
+      - platform: state
+        entity_id: climate.hvac
+        to: [unavailable, unknown]
+        for: "00:05:00"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "HVAC incident"
+          message: "climate.hvac is {{ states('climate.hvac') }} — check the thermostat / Z-Wave."
+      - service: notify.dobby_push
+        data: { message: "Incident: HVAC controller unavailable." }

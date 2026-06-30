@@ -26,6 +26,7 @@ YAML_FILES = [
     "configs/homeassistant/packages/security.yaml",
     "configs/homeassistant/packages/lighting.yaml",
     "configs/homeassistant/packages/presence_audio.yaml",
+    "configs/homeassistant/packages/climate.yaml",
     "configs/esphome/presence-room.example.yaml",
 ]
 JSON_FILES = ["services/archive-job/lifecycle.json"]

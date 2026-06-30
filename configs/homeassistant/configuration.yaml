@@ -2,6 +2,11 @@ default_config:
 
 homeassistant:
   name: Dobby
+  time_zone: America/New_York   # NY observes DST (EST/EDT); HA handles it
+  # Set these for sun-based automations (dusk/dawn lighting in lighting.yaml):
+  # latitude: 40.7128
+  # longitude: -74.0060
+  # elevation: 10
   packages: !include_dir_named packages
 
 # Long-term audit goes to PostgreSQL (system-of-record), not the default SQLite.

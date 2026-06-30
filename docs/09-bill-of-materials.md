@@ -17,7 +17,8 @@ Prices are approximate USD and drift — treat as ballpark.
 
 > **Efficiency:** the hub runs 24/7 and is mostly idle, so *idle* watts drive
 > the bill. The **N305 (~10–13 W idle)** is the perf/watt sweet spot ≈ **$33–39/yr**
-> at ~$0.30/kWh; a Core Ultra adds compute but idles higher (12–17 W) ≈ $44–66/yr.
+> at ~$0.30/kWh (NY rates: NYC/ConEd ~$0.33, ~$0.24 upstate); a Core Ultra adds
+> compute but idles higher (12–17 W) ≈ $44–66/yr.
 > Full table in `docs/01` → *Compute vs electricity efficiency (perf/watt)*.
 
 ## 2. Network
@@ -46,14 +47,19 @@ Prices are approximate USD and drift — treat as ballpark.
 | Physical cylinder + keys | match the door | 2 | — |
 | Apple home hub | **Apple TV 4K** or **HomePod mini** | 1 | 99–149 |
 
-## 5. Cameras (VLAN30, no internet)
+## 5. Cameras (VLAN30, no internet) — NDAA §889-compliant only
 
-| Item | Current pick | Qty | ~$ |
+| Item | Current pick | Qty | ~$ ea |
 |---|---|---|---|
-| Door / perimeter | **Reolink RLC-820A** (4K, on-device AI) | 3–4 | 60–90 ea |
-| Wide coverage | **Reolink Duo 3 PoE** (16 MP, 180°) | 0–1 | 180 |
-| Night (color) | **Reolink ColorX** | 0–1 | 90 |
+| Door / perimeter (standardize) | **Hanwha Wisenet** A/Q-series turret | 3–4 | 150–350 |
+| Value alternative | **Vivotek** (C-series / IB9388-HT) | — | 150–300 |
+| Night / color-at-night | **Axis** (Lightfinder M-line) or Hanwha low-light | 0–1 | 250–600 |
+| One ecosystem option | **Ubiquiti UniFi Protect G5** (RTSP via UniFi Protect) | — | 130–320 |
 
+**Excluded under NDAA:** Dahua + OEMs (Amcrest, EmpireTech, Loryta), Hikvision +
+OEMs (Annke, LaView). **Reolink / Lorex** = verify-per-SKU, not used here.
+Compliant gear runs ≈30–80% more than the banned equivalents; there is no clean
+~$100 compliant equal. Verify PoE + ONVIF/RTSP + dual substream + H.264 per model.
 Start with the front door, validate clips, then expand.
 
 ## 6. Sensors
@@ -75,6 +81,19 @@ doesn't cut out when you sit down.
 | (alt.) switches + hub | **Lutron Caséta** + Smart Bridge | as needed | 60 + 60 |
 
 *Use a licensed electrician for mains relays.*
+
+## 7b. Climate / HVAC (assumes a 24V heat pump — see docs/10)
+
+| Item | Current pick | Qty | ~$ |
+|---|---|---|---|
+| Heat-pump thermostat (24V) | **Honeywell T6 Pro Z-Wave (TH6320ZW, `-2007`)** | 1 per zone | 80–120 |
+| Dual-fuel outdoor sensor | **Honeywell C7089U** (only if heat pump + gas backup) | 0–1 | 25–40 |
+| C-wire adapter (if no C) | add-a-wire / Fast-Stat / furnace-board adapter | 0–1 | 20–40 |
+| (line-voltage homes) | **Sinopé TH1123ZB/TH1124ZB** Zigbee | 1 per circuit | 50–90 |
+| (mini-split homes) | **ESP32 + ESPHome CN105** pigtail + level shifter | 1 per head | 10–25 |
+
+Verify the HVAC type first (`docs/10` → STEP ZERO). Heat pump is the most likely
+for a ~2011 Durham NC home.
 
 ## 8. Whole-house audio (per room)
 
