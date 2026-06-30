@@ -28,15 +28,41 @@ Notes:
 
 ## Recommended hardware
 
+Full current-2026 shopping list with quantities/budget: `docs/09-bill-of-materials.md`.
+
 | Part | Recommendation | Why |
 |---|---|---|
-| Hub | Intel **Core Ultra (125H/255H) or N305** mini PC, 32 GB RAM, 1–2 TB NVMe | QuickSync + NPU → detection via OpenVINO, **no Coral** |
+| Hub | Intel **N305** mini PC (balanced perf/watt), 32 GB RAM, 1–2 TB NVMe — step up to **Core Ultra (125H/255H)** only for 6+ cams / heavy HKSV | QuickSync + OpenVINO detection, **no Coral**; see perf/watt below |
 | Surveillance disk | **WD Purple / Seagate SkyHawk** 4–8 TB (CMR), external USB-SATA or internal | 24/7 write endurance; never record to the OS NVMe |
 | UPS | CyberPower CP1500PFCLCD (or similar, USB monitoring) | Rides through outages; clean shutdown |
 | Network | VLAN-managed switch + **PoE+** switch sized for cameras | VLAN isolation (see `docs/02`) |
-| Zigbee | SkyConnect / ConBee II (on a short USB-2 extension) | Keep away from USB-3/NVMe RF noise |
-| Z-Wave | Zooz 800 / Aeotec Z-Stick 7 | 800-series, S2 security |
+| Zigbee | **HA Connect ZBT-2** (on a short USB-2 extension) | Keep away from USB-3/NVMe RF noise |
+| Z-Wave | **HA Connect ZWA-2** (Z-Wave 800/LR), or Aeotec **Z-Stick 10 Pro** (Zigbee+Z-Wave in one) | 800-series, S2 security |
 | Archive key | **Nitrokey HSM 2** or **YubiKey 5** (×2 + paper backup) | Hardware-held key for the B2 archive |
+
+### Compute vs electricity efficiency (perf/watt)
+
+The hub runs 24/7 and is **mostly idle with Frigate bursts**, so *idle* watts
+dominate the running cost, not peak. Measured 2026 figures:
+
+| Chip | Idle | Frigate load (4–6 cams) | Compute | Note |
+|---|---|---|---|---|
+| N100 / N150 | **6–8 W** | ~17 W | baseline | most efficient; tight for 6 cams + HKSV |
+| **N305 (8-core)** | **~10–13 W** | ~30–34 W (peak ~50) | ~2× N100 | **best balance for this hub** |
+| Core Ultra 5 125H | **12–17 W** | 25–35 W | ~3× N100, Arc iGPU | idles *higher* than N305 (Meteor Lake) |
+| Core Ultra 7 255H | ~13–18 W | higher | most; more efficient than 125H | Arrow Lake; headroom, pricier |
+| Panther Lake 356H | low–mid | 45 W TDP | highest | built for peak, not idle frugality |
+
+**Balanced pick: Intel N305.** It doubles the N100's compute for only ~+5 W
+idle, and its QuickSync + OpenVINO comfortably run 4–6 cameras with Scrypted
+HKSV — no Coral. Note the **Core Ultra 125H idles *higher* than the N305**
+despite more peak power, so it is the *worse* perf/watt choice for a mostly-idle
+hub; pick a Core Ultra only if you genuinely need the Arc iGPU for 6+ cameras or
+multiple simultaneous HKSV transcodes. For 2–4 cameras, the **N150** is even
+more efficient. Board design matters — an ODROID-H4-class N305 idles <3 W.
+
+Running cost (~$0.30/kWh): N305 ~15 W avg ≈ **$33–39/yr**; N100 ~12 W ≈ ~$30/yr;
+Core Ultra ~20–25 W ≈ $44–66/yr; the legacy NUC8i7HNK ~50 W ≈ ~$110–130/yr.
 
 ## Step 0 — Flash and first boot
 
