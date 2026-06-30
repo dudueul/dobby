@@ -1,4 +1,9 @@
-# Frigate — local AI NVR. Detection on the Intel iGPU/NPU via OpenVINO (no Coral).
+# Frigate — local AI NVR. Detection on the Intel iGPU via OpenVINO (no Coral).
+# Deployed hub = NUC8i7HVK (Hades Canyon): use the Intel UHD 630 iGPU for both
+# QuickSync decode and OpenVINO detection. This box has NO NPU and the AMD Radeon
+# Vega M is NOT used. Verify the Intel render node and map it in docker-compose:
+#   vainfo --display drm --device /dev/dri/renderD128
+# (Intel may enumerate as renderD128 or renderD129 here.) Keep to ~3-4 cameras.
 mqtt:
   host: mosquitto
   user: "{FRIGATE_MQTT_USER}"
@@ -7,7 +12,8 @@ mqtt:
 detectors:
   ov:
     type: openvino
-    device: GPU          # use 'NPU' on Core Ultra once /dev/accel is passed through
+    device: GPU          # UHD 630 iGPU (this box has no NPU); ~30-40ms/inference.
+                         # Add a Coral if you scale past ~4 cameras.
 
 model:
   width: 300

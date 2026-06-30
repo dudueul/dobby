@@ -30,6 +30,16 @@ Notes:
 
 Full current-2026 shopping list with quantities/budget: `docs/09-bill-of-materials.md`.
 
+> **Deployed hub (interim): Intel NUC8i7HVK "Hades Canyon"** (owned). Runs the full
+> stack for **~3–4 cameras**: QuickSync + OpenVINO detection on the **UHD 630 iGPU**
+> (no Coral, no NPU; the AMD Vega M dGPU is unused). Caveats: **dual 1 GbE** (not
+> 2.5 GbE), **no SATA bay** (bulk video → external/NAS), **~60–100 W under load**
+> (the unused Vega M runs hot/inefficient), **DDR4** (not DDR5), and **EOL/2018**
+> (no warranty). Treat it as the **Phase-1 / prove-the-loop** box; the table below
+> is the planned 24/7 upgrade (an N305 cuts power ~3–4× and adds 2.5 GbE + an NPU).
+> On this box: 16–32 GB DDR4 + an NVMe (+ external/NAS bulk), Ubuntu 24.04, confirm
+> `vainfo` shows QuickSync, and pin Frigate to the **Intel** render node.
+
 | Part | Recommendation | Why |
 |---|---|---|
 | Hub | Intel **N305** mini PC (balanced perf/watt), 32 GB RAM, 1–2 TB NVMe — step up to **Core Ultra (125H/255H)** only for 6+ cams / heavy HKSV | QuickSync + OpenVINO detection, **no Coral**; see perf/watt below |
