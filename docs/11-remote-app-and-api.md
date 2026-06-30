@@ -34,6 +34,47 @@ cert in the app.
    remote (needs a HomePod/Apple TV home hub). You get less to maintain at the
    cost of only what the bridge exposes.
 
+## PWA option (TanStack Start + BFF) — recommended for a quick-view panel
+
+For a quick-view management client (dashboards, light/HVAC controls, arm/disarm,
+camera view) a **PWA is sufficient and the lighter path** than a native app:
+cross-platform from one codebase, installable to the Home Screen, no App Store,
+instant updates. Live camera works via **go2rtc WebRTC**.
+
+- **Build with TanStack Start using its server functions as a small BFF** that
+  **holds the HA token server-side** (keeps it out of the browser) and proxies/
+  normalizes the HA API. Pair **TanStack Query** (fetched/cached state) with the
+  **HA WebSocket** (live push into the UI). A plain Vite + TanStack Router SPA is
+  fine too if you skip the BFF — but then the token lives in the browser, so gate
+  with a passkey (below). The BFF runs as another container on the hub, reachable
+  only over the VPN.
+- **iOS gaps the PWA can't fill:** Home Screen widgets, Lock Screen, Live
+  Activities, Apple Watch, and background location/geofencing — use the **HA
+  Companion app** for presence and for the alerting below.
+
+### Notifications — Web Push vs Companion (the split that matters)
+
+- **Web Push works on iOS 16.4+ but only when the PWA is installed to the Home
+  Screen**; iOS requires a notification be shown for every push (no silent
+  pushes); payloads are E2E-encrypted (VAPID). Android Chrome Web Push is
+  unrestricted.
+- **Decisive limit:** iOS does **not** expose the Time-Sensitive / Critical
+  interruption level to Web Push, so a Web Push alert can be **silenced by Focus /
+  Do Not Disturb / Sleep**. Therefore:
+  - **Use Web Push** for informational/management alerts (battery low, door left
+    open, package detected).
+  - **Keep the HA Companion app** for **security-critical** alerts (intrusion,
+    door forced, alarm) — it can send **Time-Sensitive/Critical** that pierce
+    Focus/DND. Do not make Web Push your alarm channel on iOS.
+- **Custom PWA push wiring:** VAPID keypair → service-worker `push` handler →
+  `PushManager.subscribe()` → store the subscription in the **BFF** (which holds
+  the VAPID private key) → HA automation → `rest_command` → BFF → `web-push` to
+  subscribers. (Or just use HA's built-in **`html5`** notify for the HA frontend
+  PWA.)
+- **Offline:** Web Push *and* APNs both need internet — neither fires if home
+  internet is down. Add a **local** alert path (HomePod/Sonos TTS, or a siren on
+  the alarm) so a break-in is still noticed offline.
+
 ## The entity contract (the only things the app touches)
 
 | Capability | Entity | Command (REST service) |
