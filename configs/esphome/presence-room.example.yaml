@@ -1,0 +1,65 @@
+# DIY mmWave room-presence node: ESP32 + HLK-LD2410.
+# Publishes an occupancy binary_sensor consumed by the presence_audio package
+# (docs/05, docs/06). The Apollo R PRO-1 ships ESPHome firmware that does the
+# same out of the box — use this only for a DIY build.
+#
+# Copy to configs/esphome/presence-<room>.yaml, set `room`/`friendly`, and
+# adopt it in the ESPHome add-on. After adoption, confirm the entity id in HA is
+# `binary_sensor.presence_<room>` (rename in the HA UI if the node-name prefix
+# changes it) so the audio automations match.
+
+substitutions:
+  room: kitchen
+  friendly: Kitchen
+
+esphome:
+  name: presence-${room}
+  friendly_name: ${friendly}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+# Native ESPHome API — Home Assistant auto-discovers it (no MQTT needed).
+api:
+  encryption:
+    key: !secret api_encryption_key
+ota:
+  - platform: esphome
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+uart:
+  id: ld_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
+
+ld2410:
+  uart_id: ld_uart
+
+binary_sensor:
+  - platform: ld2410
+    has_target:
+      name: presence_${room}      # target entity: binary_sensor.presence_${room}
+      id: presence
+      device_class: occupancy
+
+sensor:
+  - platform: ld2410
+    detection_distance:
+      name: ${friendly} detection distance
+    moving_distance:
+      name: ${friendly} moving distance
+
+number:
+  # Tune the still/timeout so a seated person stays "present" (no music cutout).
+  - platform: ld2410
+    timeout:
+      name: ${friendly} presence timeout

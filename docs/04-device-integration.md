@@ -3,6 +3,36 @@
 How each class of device reaches the hub. Bring up **one of each** first,
 validate, then scale.
 
+## Recommended current models (2026)
+
+The full shopping list with quantities, phasing, and budget is in
+`docs/09-bill-of-materials.md`. These are the current picks per category:
+
+| Category | Current pick (2026) | Path |
+|---|---|---|
+| Lock | **Nuki Smart Lock Pro (5th Gen)** or **Ultra** + **Keypad 2 NFC** | Apple Home Key (Aliro) + MQTT/Web API |
+| Apple hub | **Apple TV 4K** or **HomePod mini** | Home Key + HomeKit Secure Video + Thread border router |
+| Cameras | **Reolink RLC-820A / RLC-810A**, **Duo 3 PoE** (wide), **ColorX** (night) | RTSP/ONVIF → Frigate |
+| Zigbee | **Home Assistant Connect ZBT-2** | Zigbee2MQTT (also a Thread border router via OTBR) |
+| Z-Wave | **Home Assistant Connect ZWA-2** (Z-Wave 800/LR); or **Aeotec Z-Stick 10 Pro** (Zigbee+Z-Wave in one) | Z-Wave JS UI |
+| Room presence | **Apollo R PRO-1** (PoE, ESPHome) wired; **Aqara FP300** battery; **Aqara FP2** for zones | ESPHome / Zigbee-Thread → HA |
+| Contact | **Aqara Door & Window Sensor P2** (Matter/Thread) | Thread border router → HA |
+| Lighting | **Shelly 1PM Gen4** (Wi-Fi+Zigbee+Matter+metering); Lutron Caséta for reliability | local MQTT → Mosquitto |
+| Audio player | **WiiM Pro Plus** (keeps AirPlay 2) / **WiiM Amp Pro** | Music Assistant / Snapcast |
+| Archive key | **Nitrokey HSM 2** (DKEK clone) or 2× **YubiKey 5** + paper | age / PKCS#11 envelope |
+
+Notes:
+
+- **Thread border router**: the Aqara P2 contact sensor and Thread presence
+  sensors need one. The Apple TV/HomePod provides it for the Apple side; run
+  OpenThread Border Router (or use the ZBT-2) for the Home Assistant side.
+- **Shelly Gen4 local MQTT**: in the Shelly web UI enable *Networks → MQTT* →
+  point at `mosquitto:1883` with the `MQTT_USER`/`MQTT_PASSWORD` from `.env`,
+  enable *RPC over MQTT*, and disable Shelly Cloud to keep it local-only.
+- **Apollo R PRO-1** ships ESPHome firmware; adopt it in the ESPHome add-on and
+  it publishes `binary_sensor.presence_<room>` used by the audio package. A
+  DIY ESP32 + LD2410 equivalent is in `configs/esphome/presence-room.example.yaml`.
+
 ## Locks — Nuki
 
 Three event paths, used together for resilience:

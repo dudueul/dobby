@@ -43,4 +43,6 @@ sql/                  PostgreSQL schema + archive catalog
 See `docs/01-os-and-provisioning.md` for the recommended mini-PC (Intel Core
 Ultra / N305 class — QuickSync + NPU, no Coral needed), surveillance disk, UPS,
 PoE switch, Zigbee/Z-Wave coordinators, and the hardware security key for the
-archive.
+archive. The full current (2026) shopping list with quantities, phasing, and
+budget — locks, cameras, sensors, lighting, audio, keys — is in
+`docs/09-bill-of-materials.md`.
