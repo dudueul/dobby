@@ -17,7 +17,8 @@ Prices are approximate USD and drift — treat as ballpark.
 
 > **Efficiency:** the hub runs 24/7 and is mostly idle, so *idle* watts drive
 > the bill. The **N305 (~10–13 W idle)** is the perf/watt sweet spot ≈ **$33–39/yr**
-> at ~$0.30/kWh; a Core Ultra adds compute but idles higher (12–17 W) ≈ $44–66/yr.
+> at ~$0.30/kWh (NY rates: NYC/ConEd ~$0.33, ~$0.24 upstate); a Core Ultra adds
+> compute but idles higher (12–17 W) ≈ $44–66/yr.
 > Full table in `docs/01` → *Compute vs electricity efficiency (perf/watt)*.
 
 ## 2. Network

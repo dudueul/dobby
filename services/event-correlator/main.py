@@ -30,6 +30,8 @@ QUEUE: asyncio.Queue[dict] = asyncio.Queue()
 
 
 def is_night(ts: datetime) -> bool:
+    # TZ is a zoneinfo zone (e.g. America/New_York), so .astimezone() yields the
+    # correct local hour across DST (EST/EDT) — the night window does not drift.
     h = ts.astimezone(TZ).hour
     return h >= NIGHT_START or h < NIGHT_END
 

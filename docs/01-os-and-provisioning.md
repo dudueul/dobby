@@ -61,7 +61,8 @@ hub; pick a Core Ultra only if you genuinely need the Arc iGPU for 6+ cameras or
 multiple simultaneous HKSV transcodes. For 2–4 cameras, the **N150** is even
 more efficient. Board design matters — an ODROID-H4-class N305 idles <3 W.
 
-Running cost (~$0.30/kWh): N305 ~15 W avg ≈ **$33–39/yr**; N100 ~12 W ≈ ~$30/yr;
+Running cost (NY rates — NYC/ConEd ~$0.33/kWh all-in, ~$0.24 upstate; figures
+below at ~$0.30/kWh): N305 ~15 W avg ≈ **$33–39/yr**; N100 ~12 W ≈ ~$30/yr;
 Core Ultra ~20–25 W ≈ $44–66/yr; the legacy NUC8i7HNK ~50 W ≈ ~$110–130/yr.
 
 ## Step 0 — Flash and first boot
@@ -75,7 +76,7 @@ Core Ultra ~20–25 W ≈ $44–66/yr; the legacy NUC8i7HNK ~50 W ≈ ~$110–13
 
 ```bash
 sudo apt update && sudo apt full-upgrade -y
-sudo timedatectl set-timezone Asia/Singapore
+sudo timedatectl set-timezone America/New_York
 sudo apt install -y git unattended-upgrades
 sudo dpkg-reconfigure -plow unattended-upgrades   # enable security auto-updates
 ```
