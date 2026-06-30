@@ -82,6 +82,19 @@ doesn't cut out when you sit down.
 
 *Use a licensed electrician for mains relays.*
 
+## 7b. Climate / HVAC (assumes a 24V heat pump — see docs/10)
+
+| Item | Current pick | Qty | ~$ |
+|---|---|---|---|
+| Heat-pump thermostat (24V) | **Honeywell T6 Pro Z-Wave (TH6320ZW, `-2007`)** | 1 per zone | 80–120 |
+| Dual-fuel outdoor sensor | **Honeywell C7089U** (only if heat pump + gas backup) | 0–1 | 25–40 |
+| C-wire adapter (if no C) | add-a-wire / Fast-Stat / furnace-board adapter | 0–1 | 20–40 |
+| (line-voltage homes) | **Sinopé TH1123ZB/TH1124ZB** Zigbee | 1 per circuit | 50–90 |
+| (mini-split homes) | **ESP32 + ESPHome CN105** pigtail + level shifter | 1 per head | 10–25 |
+
+Verify the HVAC type first (`docs/10` → STEP ZERO). Heat pump is the most likely
+for a ~2011 Durham NC home.
+
 ## 8. Whole-house audio (per room)
 
 | Item | Current pick | Qty | ~$ |
