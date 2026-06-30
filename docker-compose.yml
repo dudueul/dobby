@@ -99,8 +99,10 @@ services:
     privileged: true
     shm_size: "512mb"
     devices:
-      - /dev/dri/renderD128:/dev/dri/renderD128   # QuickSync decode + OpenVINO
-      # - /dev/accel:/dev/accel                   # uncomment for Core Ultra NPU
+      - /dev/dri/renderD128:/dev/dri/renderD128   # Intel iGPU: QuickSync + OpenVINO
+      # NUC8i7HVK: confirm renderD128 is the Intel UHD 630, not the AMD Vega M:
+      #   vainfo --display drm --device /dev/dri/renderD128   (map the Intel node)
+      # - /dev/accel:/dev/accel                   # Core Ultra NPU only (N/A here)
     environment:
       TZ: ${TZ}
       FRIGATE_RTSP_USER: ${FRIGATE_RTSP_USER}

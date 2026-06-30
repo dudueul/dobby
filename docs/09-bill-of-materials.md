@@ -8,8 +8,9 @@ Prices are approximate USD and drift — treat as ballpark.
 
 | Item | Current pick | Qty | ~$ | Notes |
 |---|---|---|---|---|
-| Hub mini PC (balanced) | **Intel N305 mini PC / NAS board** (best perf/watt) | 1 | 200–380 | ~10–13 W idle, runs 4–6 cams + HKSV; QuickSync, no Coral |
-| Hub mini PC (compute) | **ASUS NUC 14 Pro Tall** (Ultra 5 125H) — keeps a 2.5″ SATA bay | 1 | 380–450 | Step up for 6+ cams / heavy HKSV; Arc iGPU but idles higher (12–17 W) |
+| Hub (deployed, owned) | **Intel NUC8i7HVK "Hades Canyon"** (you have this) | 1 | $0 | Phase-1: ~3–4 cams; UHD 630 QuickSync+OpenVINO; **1 GbE, no SATA, DDR4, ~60–100 W, EOL 2018** — plan to replace |
+| Hub upgrade (balanced) | **Intel N305 mini PC / NAS board** (best perf/watt) | 1 | 200–380 | ~10–13 W idle, 4–6 cams + HKSV; 2.5 GbE, QuickSync, no Coral |
+| Hub upgrade (compute) | **ASUS NUC 14 Pro Tall** (Ultra 5 125H) — keeps a 2.5″ SATA bay | 1 | 380–450 | 6+ cams / heavy HKSV; Arc iGPU; or **NUC 16 Pro** for a hub + light-AI box |
 | RAM | 32 GB DDR5 SO-DIMM | 1 | 70–90 | |
 | OS SSD | 1 TB NVMe (M.2) | 1 | 70–90 | OS + Postgres + Docker |
 | Surveillance storage | **WD Purple / Seagate SkyHawk** HDD (or 8 TB TLC NVMe) | 4–8 TB | 150–180 | LUKS-encrypted; HDD = cheap $/TB |
