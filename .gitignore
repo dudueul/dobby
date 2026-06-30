@@ -23,3 +23,8 @@ configs/grafana/data/
 # python
 __pycache__/
 *.pyc
+
+# node / control-panel app
+node_modules/
+apps/control-panel/web/dist/
+*.tsbuildinfo

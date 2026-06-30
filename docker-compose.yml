@@ -213,3 +213,22 @@ services:
       - ${DATA_ROOT}/grafana:/var/lib/grafana
     ports:
       - "3000:3000"
+
+  # ---------- control panel (BFF + PWA) ----------
+  control-panel:
+    <<: *common
+    build: ./apps/control-panel
+    container_name: lockhub_control_panel
+    depends_on: [homeassistant, frigate]
+    environment:
+      HA_BASE_URL: http://homeassistant:8123
+      HA_TOKEN: ${HOME_ASSISTANT_TOKEN}
+      GO2RTC_URL: http://frigate:1984
+      CONTROL_PANEL_PORT: 8088
+      VAPID_PUBLIC: ${VAPID_PUBLIC}
+      VAPID_PRIVATE: ${VAPID_PRIVATE}
+      VAPID_SUBJECT: ${VAPID_SUBJECT}
+      PUSH_SHARED_SECRET: ${PUSH_SHARED_SECRET}
+      TZ: ${TZ}
+    ports:
+      - "8088:8088"     # LAN-only; reach remotely via the VPN, never port-forward
