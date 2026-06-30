@@ -8,11 +8,17 @@ Prices are approximate USD and drift — treat as ballpark.
 
 | Item | Current pick | Qty | ~$ | Notes |
 |---|---|---|---|---|
-| Hub mini PC | **ASUS NUC 14 Pro Tall** (Ultra 5 125H) — keeps a 2.5″ SATA bay | 1 | 380–450 | Arc QuickSync + NPU; no Coral. Cheaper $/port: a CWWK/Topton N305 6-bay NAS board (~$200) |
+| Hub mini PC (balanced) | **Intel N305 mini PC / NAS board** (best perf/watt) | 1 | 200–380 | ~10–13 W idle, runs 4–6 cams + HKSV; QuickSync, no Coral |
+| Hub mini PC (compute) | **ASUS NUC 14 Pro Tall** (Ultra 5 125H) — keeps a 2.5″ SATA bay | 1 | 380–450 | Step up for 6+ cams / heavy HKSV; Arc iGPU but idles higher (12–17 W) |
 | RAM | 32 GB DDR5 SO-DIMM | 1 | 70–90 | |
 | OS SSD | 1 TB NVMe (M.2) | 1 | 70–90 | OS + Postgres + Docker |
 | Surveillance storage | **WD Purple / Seagate SkyHawk** HDD (or 8 TB TLC NVMe) | 4–8 TB | 150–180 | LUKS-encrypted; HDD = cheap $/TB |
 | UPS | CyberPower **CP1500PFCLCD** | 1 | 180–220 | USB monitoring |
+
+> **Efficiency:** the hub runs 24/7 and is mostly idle, so *idle* watts drive
+> the bill. The **N305 (~10–13 W idle)** is the perf/watt sweet spot ≈ **$33–39/yr**
+> at ~$0.30/kWh; a Core Ultra adds compute but idles higher (12–17 W) ≈ $44–66/yr.
+> Full table in `docs/01` → *Compute vs electricity efficiency (perf/watt)*.
 
 ## 2. Network
 
