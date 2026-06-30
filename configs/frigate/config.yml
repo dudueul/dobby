@@ -40,18 +40,22 @@ snapshots:
   retain:
     default: 30
 
+# Cameras: NDAA §889-compliant brands only (Hanwha Wisenet / Vivotek / Axis /
+# UniFi Protect). Excluded: Dahua + OEMs (Amcrest/EmpireTech/Loryta) and
+# Hikvision + OEMs (Annke). RTSP paths are vendor-specific; the example below uses
+# Hanwha Wisenet ONVIF media-profile paths (profile1 = main, profile2 = substream).
 go2rtc:
   streams:
     front_door:
-      - "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/main"
+      - "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/profile1/media.smp"
 
 cameras:
   front_door:
     ffmpeg:
       inputs:
-        - path: "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/sub"
+        - path: "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/profile2/media.smp"
           roles: [detect]
-        - path: "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/main"
+        - path: "rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@camera-front.home.arpa:554/profile1/media.smp"
           roles: [record]
     detect:
       width: 640

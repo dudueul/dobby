@@ -47,14 +47,19 @@ Prices are approximate USD and drift — treat as ballpark.
 | Physical cylinder + keys | match the door | 2 | — |
 | Apple home hub | **Apple TV 4K** or **HomePod mini** | 1 | 99–149 |
 
-## 5. Cameras (VLAN30, no internet)
+## 5. Cameras (VLAN30, no internet) — NDAA §889-compliant only
 
-| Item | Current pick | Qty | ~$ |
+| Item | Current pick | Qty | ~$ ea |
 |---|---|---|---|
-| Door / perimeter | **Reolink RLC-820A** (4K, on-device AI) | 3–4 | 60–90 ea |
-| Wide coverage | **Reolink Duo 3 PoE** (16 MP, 180°) | 0–1 | 180 |
-| Night (color) | **Reolink ColorX** | 0–1 | 90 |
+| Door / perimeter (standardize) | **Hanwha Wisenet** A/Q-series turret | 3–4 | 150–350 |
+| Value alternative | **Vivotek** (C-series / IB9388-HT) | — | 150–300 |
+| Night / color-at-night | **Axis** (Lightfinder M-line) or Hanwha low-light | 0–1 | 250–600 |
+| One ecosystem option | **Ubiquiti UniFi Protect G5** (RTSP via UniFi Protect) | — | 130–320 |
 
+**Excluded under NDAA:** Dahua + OEMs (Amcrest, EmpireTech, Loryta), Hikvision +
+OEMs (Annke, LaView). **Reolink / Lorex** = verify-per-SKU, not used here.
+Compliant gear runs ≈30–80% more than the banned equivalents; there is no clean
+~$100 compliant equal. Verify PoE + ONVIF/RTSP + dual substream + H.264 per model.
 Start with the front door, validate clips, then expand.
 
 ## 6. Sensors
