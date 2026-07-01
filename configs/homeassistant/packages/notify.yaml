@@ -18,3 +18,4 @@ notify:
       x-push-secret: !secret push_shared_secret
     title_param_name: title
     message_param_name: body
+    data_param_name: data   # service-call `data:` extras (tier, tag) nest here

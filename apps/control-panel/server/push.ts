@@ -17,7 +17,9 @@ export interface PushMessage {
 
 /** Normalize an HA notify payload into the message + Web Push delivery options. */
 export function pushPlan(raw: unknown): { message: PushMessage; options: webpush.RequestOptions } {
-  const b = (raw ?? {}) as Record<string, unknown>;
+  const top = (raw ?? {}) as Record<string, unknown>;
+  // HA's REST notify nests service-call extras under `data`; accept both shapes.
+  const b = { ...top, ...(top.data as Record<string, unknown> | undefined) };
   const tier = b.tier === "critical" || b.tier === "info" ? b.tier : "normal";
   const message: PushMessage = {
     title: typeof b.title === "string" && b.title ? b.title : "dobby",

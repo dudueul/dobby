@@ -19,6 +19,10 @@ test("pushPlan_acceptsMessageAsBodyAlias", () => {
   assert.equal(pushPlan({ message: "hello" }).message.body, "hello");
 });
 
+test("pushPlan_readsTierNestedUnderTheNotifyDataKey", () => {
+  assert.equal(pushPlan({ title: "t", body: "b", data: { tier: "critical" } }).message.tier, "critical");
+});
+
 test("subscriptions_surviveARestart", async () => {
   const store = path.join(mkdtempSync(path.join(tmpdir(), "push-")), "subs.json");
   const sub = { endpoint: "https://push.example/1", keys: { p256dh: "k", auth: "a" } };
