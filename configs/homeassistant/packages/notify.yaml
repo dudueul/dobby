@@ -1,0 +1,20 @@
+# notify.dobby_push — the one notification service every automation targets.
+# It POSTs to the control-panel BFF's Web Push fan-out (shared-secret header);
+# the BFF delivers to every subscribed browser/PWA. The panel binds to loopback
+# and HA runs host-network, so 127.0.0.1 works and nothing crosses the LAN.
+#
+# Payload contract (see apps/control-panel/server/push.ts):
+#   title, body, and optional extras via the service call's `data:` block —
+#   `tier: critical|normal|info` (delivery urgency), `tag` (dedupe/replace).
+#
+# Web Push is the informational channel. For DND-piercing security alerts,
+# add the HA Companion app's notify service alongside this one (docs/13).
+notify:
+  - name: dobby_push
+    platform: rest
+    resource: "http://127.0.0.1:8088/api/push/notify"
+    method: POST_JSON
+    headers:
+      x-push-secret: !secret push_shared_secret
+    title_param_name: title
+    message_param_name: body
