@@ -27,6 +27,7 @@ YAML_FILES = [
     "configs/homeassistant/packages/notify.yaml",
     "configs/homeassistant/packages/security.yaml",
     "configs/homeassistant/packages/lighting.yaml",
+    "configs/homeassistant/packages/presence.yaml",
     "configs/homeassistant/packages/presence_audio.yaml",
     "configs/homeassistant/packages/climate.yaml",
     "configs/esphome/presence-room.example.yaml",
