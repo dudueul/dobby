@@ -23,6 +23,7 @@ YAML_FILES = [
     "configs/zigbee2mqtt/configuration.yaml",
     "configs/grafana/provisioning/datasources/postgres.yml",
     "configs/homeassistant/configuration.yaml",
+    "configs/homeassistant/packages/alarm.yaml",
     "configs/homeassistant/packages/notify.yaml",
     "configs/homeassistant/packages/security.yaml",
     "configs/homeassistant/packages/lighting.yaml",
