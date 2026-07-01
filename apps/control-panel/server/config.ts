@@ -34,6 +34,7 @@ export const ENTITY_ALLOW: string[] = [
   "lock.front_door_nuki",
   "lock.back_door_nuki",
   "climate.hvac",
+  "alarm_control_panel.dobby",
   "input_select.house_mode",
   "light.front_porch",
   "light.driveway",
@@ -52,6 +53,10 @@ export const SERVICE_ALLOW = new Set<string>([
   "lock.unlock",
   "climate.set_temperature",
   "climate.set_hvac_mode",
+  "alarm_control_panel.alarm_arm_home",
+  "alarm_control_panel.alarm_arm_away",
+  "alarm_control_panel.alarm_arm_night",
+  "alarm_control_panel.alarm_disarm",
   "input_select.select_option",
   "light.turn_on",
   "light.turn_off",
@@ -64,4 +69,10 @@ export const CAMERAS: string[] = ["front_door"];
 
 // Actions that should require a biometric re-confirm in the UI (advisory; the
 // client enforces the prompt, the BFF still only allows the service above).
-export const SENSITIVE_SERVICES = new Set<string>(["lock.unlock", "input_select.select_option"]);
+// Disarm is deliberately sensitive: the panel step-up IS the deliberate act
+// the no-auto-disarm policy (docs/13) requires.
+export const SENSITIVE_SERVICES = new Set<string>([
+  "lock.unlock",
+  "input_select.select_option",
+  "alarm_control_panel.alarm_disarm",
+]);

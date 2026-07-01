@@ -3,6 +3,7 @@ import { useLiveState, sendCommand, enablePush, login, logout, isAuthed } from "
 import { DoorTile } from "./components/DoorTile";
 import { ClimateTile } from "./components/ClimateTile";
 import { CameraTile } from "./components/CameraTile";
+import { AlarmTile } from "./components/AlarmTile";
 
 // Mirror server/config.ts CAMERAS — only streams Frigate actually defines.
 const CAMERAS = ["front_door"];
@@ -70,6 +71,7 @@ function Panel({ onSignOut }: { onSignOut: () => void }) {
       </header>
 
       <section className="grid">
+        <AlarmTile e={states["alarm_control_panel.dobby"]} />
         <DoorTile e={states["lock.front_door_nuki"]} />
         <DoorTile e={states["lock.back_door_nuki"]} />
         <ClimateTile e={states["climate.hvac"]} />
