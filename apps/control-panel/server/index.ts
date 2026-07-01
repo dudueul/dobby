@@ -7,12 +7,18 @@ import Fastify from "fastify";
 import fstatic from "@fastify/static";
 import { HaClient } from "./ha.js";
 import { registerPush } from "./push.js";
-import { PORT, GO2RTC_URL, CAMERAS } from "./config.js";
+import { registerAuth, needsStepUp, isFresh } from "./auth.js";
+import { PORT, GO2RTC_URL, CAMERAS, STEP_UP_TTL_MS } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app = Fastify({ logger: true });
+// Trust only the loopback proxy (tailscale serve) so req.ip = the real client
+// for login rate-limiting, and X-Forwarded-Proto is honored for Secure cookies.
+const app = Fastify({ logger: true, trustProxy: "127.0.0.1" });
 const ha = new HaClient();
 ha.start();
+
+// Authenticate the panel first: every /api route below is gated (fail-closed).
+registerAuth(app);
 
 // Snapshot of current allow-listed state.
 app.get("/api/state", async () => ha.snapshot());
@@ -36,6 +42,11 @@ app.post("/api/command", async (req, reply) => {
     entity_id?: string; service?: string; data?: Record<string, unknown>;
   };
   if (!entity_id || !service) { reply.code(400); return { error: "entity_id and service required" }; }
+  // Sensitive services (unlock/arm) require a *fresh* session — server-side
+  // step-up, enforced regardless of what the client UI does.
+  if (needsStepUp(service) && !(req.session && isFresh(req.session, Date.now(), STEP_UP_TTL_MS))) {
+    reply.code(401); return { error: "step_up_required", stepUp: true };
+  }
   try {
     return await ha.callService(entity_id, service, data ?? {});
   } catch (e) {

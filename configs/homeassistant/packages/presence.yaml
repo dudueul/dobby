@@ -1,0 +1,101 @@
+# Presence-based auto-arm + the "Arm now" watchdog.
+#
+# Policy (docs/13): ARMING is automated — "forgot to arm" is the top failure
+# mode of manual alarms. DISARM is never automated: a geofence/GPS blip must
+# not open the house. Arrival disarm = Alarmo code, keypad, or panel step-up.
+#
+# Requires person entities tracked by the HA Companion app (zone.home's state
+# is the count of tracked people currently home). Presence tracking WILL flake
+# (battery savers kill background location) — the watchdog below is the net.
+
+automation:
+  # Everyone left -> arm away after a 2-minute debounce (taking out the trash
+  # must not arm the house).
+  - id: presence_auto_arm_away
+    alias: "Presence: auto-arm away when everyone leaves"
+    trigger:
+      - platform: state
+        entity_id: zone.home
+        to: "0"
+        for: "00:02:00"
+    condition:
+      - condition: state
+        entity_id: alarm_control_panel.dobby
+        state: disarmed
+    action:
+      - service: alarmo.arm
+        data: { entity_id: alarm_control_panel.dobby, mode: away, skip_delay: true }
+      - service: notify.dobby_push
+        data:
+          title: "Armed (away)"
+          message: "Everyone left — alarm armed automatically."
+          data: { tier: info }
+
+  # Bedtime: arm night on a schedule when someone is home and nobody armed yet.
+  - id: presence_bedtime_arm_night
+    alias: "Presence: arm night at bedtime"
+    trigger:
+      - platform: time
+        at: "23:00:00"
+    condition:
+      - condition: state
+        entity_id: alarm_control_panel.dobby
+        state: disarmed
+      - condition: numeric_state
+        entity_id: zone.home
+        above: 0
+    action:
+      - service: alarmo.arm
+        data: { entity_id: alarm_control_panel.dobby, mode: night }
+
+  # Arming refused (open sensor, unavailable) is a fact a human must learn now.
+  - id: presence_arm_failed
+    alias: "Presence: arming failed"
+    trigger:
+      - platform: event
+        event_type: alarmo_failed_to_arm
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "⚠️ Arming FAILED"
+          message: "Alarmo refused to arm ({{ trigger.event.data.reason | default('unknown') }}). Check open sensors."
+          data: { tier: critical, tag: arm_watchdog }
+
+  # The safety net: everyone away, still disarmed after 5 minutes (auto-arm
+  # failed or presence flaked) -> critical, actionable ask.
+  - id: presence_watchdog_unarmed_away
+    alias: "Presence: everyone away but alarm disarmed — ask to arm"
+    trigger:
+      - platform: state
+        entity_id: zone.home
+        to: "0"
+        for: "00:05:00"
+    condition:
+      - condition: state
+        entity_id: alarm_control_panel.dobby
+        state: disarmed
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "House unarmed"
+          message: "Everyone is away but the alarm is disarmed. Arm now?"
+          data:
+            tier: critical
+            tag: arm_watchdog
+            # Companion-app clients render this as a tappable action; the Web
+            # Push path shows a plain notification (handler automation below).
+            actions:
+              - action: DOBBY_ARM_AWAY
+                title: "Arm now"
+
+  # Handle the Companion-app "Arm now" tap. Arming (not disarming) by
+  # notification action is consistent with the no-auto-disarm policy.
+  - id: presence_watchdog_arm_action
+    alias: "Presence: handle the Arm-now notification action"
+    trigger:
+      - platform: event
+        event_type: mobile_app_notification_action
+        event_data: { action: DOBBY_ARM_AWAY }
+    action:
+      - service: alarmo.arm
+        data: { entity_id: alarm_control_panel.dobby, mode: away, skip_delay: true }

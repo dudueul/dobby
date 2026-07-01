@@ -51,3 +51,19 @@ def evictionPlan_underDiskPressureAlsoEvictsAlreadyArchived():
 def evictionPlan_underNormalSpaceLeavesArchivedInPlace():
     archived = a("c/arch", "event_video", 100, state="both")
     assert archive.eviction_plan(NOW, [archived], 90, RETAIN, 15) == []
+
+
+def restoreVerdict_failsOnAChecksumMismatch():
+    assert archive.restore_verdict("aaa", "bbb", None) == "checksum_mismatch"
+
+
+def restoreVerdict_passesWithoutDecrypt_whenNoTestIdentityIsConfigured():
+    assert archive.restore_verdict("aaa", "aaa", None) == "verified_no_decrypt"
+
+
+def restoreVerdict_failsWhenDecryptionFails():
+    assert archive.restore_verdict("aaa", "aaa", 1) == "decrypt_failed"
+
+
+def restoreVerdict_passesWhenChecksumAndDecryptionBothHold():
+    assert archive.restore_verdict("aaa", "aaa", 0) == "verified"

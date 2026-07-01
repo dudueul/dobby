@@ -27,12 +27,21 @@ jobs:
         run: |
           python -m py_compile \
             services/nuki-ingestor/main.py \
+            services/nuki-ingestor/normalize.py \
+            services/nuki-ingestor/test_normalize.py \
             services/event-correlator/main.py \
+            services/event-correlator/intrusion.py \
+            services/event-correlator/test_intrusion.py \
             services/archive-job/archive.py \
-            services/archive-job/test_archive.py
+            services/archive-job/audit_chain.py \
+            services/archive-job/test_archive.py \
+            services/archive-job/test_audit_chain.py
 
-      - name: Pure-planner unit tests
-        run: python -m pytest -q services/archive-job/test_archive.py
+      - name: Pure-domain unit tests
+        run: |
+          python -m pytest -q services/archive-job/test_archive.py services/archive-job/test_audit_chain.py
+          python -m pytest -q services/event-correlator/test_intrusion.py
+          python -m pytest -q services/nuki-ingestor/test_normalize.py
 
       - name: Validate YAML / JSON configs
         run: python provisioning/validate-configs.py
@@ -58,4 +67,5 @@ jobs:
           node-version: "20"
       - run: npm ci
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build

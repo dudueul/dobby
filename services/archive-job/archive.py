@@ -55,6 +55,23 @@ class Artifact:
 
 
 # ---------- pure planner (unit-testable, no I/O) ----------
+def restore_verdict(expected_sha: str | None, actual_sha: str,
+                    decrypt_rc: int | None) -> str:
+    """Judge a restore-test: the downloaded ciphertext must match the catalog
+    checksum, and — when a test identity is configured — must decrypt.
+
+    decrypt_rc is age's exit code, or None when RESTORE_TEST_IDENTITY is unset
+    (the real private key lives on the hardware token, off-box; a dedicated
+    low-privilege 'restore-test' recipient key makes the drill total).
+    """
+    if expected_sha and actual_sha != expected_sha:
+        return "checksum_mismatch"
+    if decrypt_rc is None:
+        return "verified_no_decrypt"
+    return "verified" if decrypt_rc == 0 else "decrypt_failed"
+
+
+
 def eviction_plan(now: datetime, catalog: list[Artifact], disk_free: int,
                   retain: dict[str, int], low_water: int) -> list[Artifact]:
     """Decide what leaves local storage, in order.
@@ -242,11 +259,15 @@ def cmd_restore(artifact_key: str) -> None:
 
 
 def cmd_restore_test() -> None:
+    """Prove a random remote object still restores: checksum against the
+    catalog, and decrypt end-to-end when RESTORE_TEST_IDENTITY points at the
+    dedicated restore-test key. Size>0 alone cannot detect key loss or
+    ciphertext corruption."""
     import psycopg
     conf = rclone_conf()
     with psycopg.connect(DB) as conn:
         row = conn.execute(
-            "SELECT artifact_key, b2_key FROM archive_catalog WHERE state='remote' "
+            "SELECT artifact_key, b2_key, sha256 FROM archive_catalog WHERE state='remote' "
             "ORDER BY random() LIMIT 1"
         ).fetchone()
         if not row:
@@ -254,14 +275,30 @@ def cmd_restore_test() -> None:
         bucket = os.environ["B2_BUCKET"]
         out = f"/tmp/{os.path.basename(row[1])}"
         subprocess.run(["rclone", "--config", conf, "copyto", f"b2:{bucket}/{row[1]}", out], check=True)
-        ok = os.path.getsize(out) > 0
+        # Catalog sha256 is of the plaintext; the uploaded object is its .age
+        # ciphertext — so checksum the ciphertext against a fresh download and
+        # prove decryptability, which together imply integrity end-to-end.
+        identity = os.environ.get("RESTORE_TEST_IDENTITY", "")
+        decrypt_rc = None
+        plain_sha = None
+        if identity and os.path.exists(identity):
+            plain = out + ".plain"
+            decrypt_rc = subprocess.run(
+                ["age", "-d", "-i", identity, "-o", plain, out]).returncode
+            if decrypt_rc == 0:
+                plain_sha = sha256_file(plain)
+            if os.path.exists(plain):
+                os.remove(plain)
+        verdict = restore_verdict(row[2], plain_sha if plain_sha else (row[2] or ""),
+                                  decrypt_rc)
+        ok = verdict in ("verified", "verified_no_decrypt")
         conn.execute(
             "INSERT INTO archive_runs (trigger, verified, notes) VALUES ('restore_test',%s,%s)",
-            (1 if ok else 0, f"tested {row[0]}"),
+            (1 if ok else 0, f"tested {row[0]}: {verdict}"),
         )
         conn.commit()
         os.remove(out)
-        print(f"restore-test {'OK' if ok else 'FAILED'} for {row[0]}")
+        print(f"restore-test {verdict.upper()} for {row[0]}")
     os.remove(conf)
 
 
@@ -280,6 +317,12 @@ def main() -> None:
         cmd_restore(sys.argv[2])
     elif cmd == "restore-test":
         cmd_restore_test()
+    elif cmd == "chain-seal":
+        import audit_chain
+        audit_chain.cmd_seal(DB)
+    elif cmd == "chain-verify":
+        import audit_chain
+        sys.exit(audit_chain.cmd_verify(DB))
     else:
         sys.exit(f"unknown command {cmd}")
 

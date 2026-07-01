@@ -16,6 +16,8 @@ import asyncpg
 import httpx
 import paho.mqtt.client as mqtt
 
+from normalize import normalize_nuki_mqtt
+
 DATABASE_URL = os.environ["DATABASE_URL"]
 NUKI_API_TOKEN = os.environ.get("NUKI_API_TOKEN", "")
 MQTT_HOST = os.environ.get("MQTT_HOST", "mosquitto")
@@ -24,6 +26,9 @@ MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD", "")
 POLL_SECONDS = int(os.environ.get("NUKI_POLL_SECONDS", "300"))
 
 QUEUE: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+# smartlock_id -> door_key, loaded from the locks table at startup so the
+# local MQTT path attributes events to the same doors as the Web-API path.
+DOOR_KEYS: dict[str, str] = {}
 
 
 def stable_hash(data: dict[str, Any]) -> str:
@@ -100,14 +105,10 @@ async def poll_nuki_web_api(pool: asyncpg.Pool) -> None:
 
 def on_mqtt_message(client, userdata, msg):
     try:
-        payload = msg.payload.decode(errors="replace")
-        QUEUE.put_nowait({
-            "source": "nuki_mqtt", "door_key": msg.topic.replace("/", "_"),
-            "nuki_smartlock_id": None, "event_time": datetime.now(timezone.utc).isoformat(),
-            "action": "mqtt_state_update", "state": payload, "trigger": msg.topic,
-            "user_name": None, "auth_id": None, "access_method": "unknown",
-            "battery_critical": None, "raw": {"topic": msg.topic, "payload": payload},
-        })
+        e = normalize_nuki_mqtt(msg.topic, msg.payload.decode(errors="replace"),
+                                DOOR_KEYS, datetime.now(timezone.utc).isoformat())
+        if e:
+            QUEUE.put_nowait(e)
     except Exception as exc:
         print(f"MQTT parse error: {exc}")
 
@@ -134,6 +135,9 @@ def start_mqtt():
 
 async def main():
     pool = await asyncpg.create_pool(DATABASE_URL)
+    async with pool.acquire() as conn:
+        for r in await conn.fetch("SELECT nuki_smartlock_id, door_key FROM locks"):
+            DOOR_KEYS[r["nuki_smartlock_id"]] = r["door_key"]
     start_mqtt()
     asyncio.create_task(mqtt_worker(pool))
     while True:

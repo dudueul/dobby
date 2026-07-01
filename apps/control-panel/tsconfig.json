@@ -11,5 +11,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["server", "web/src"]
+  "include": ["server", "web/src"],
+  "exclude": ["**/*.test.ts"]
 }

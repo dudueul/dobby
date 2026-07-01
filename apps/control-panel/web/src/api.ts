@@ -34,13 +34,47 @@ export function useLiveState(): { states: StateMap; connected: boolean } {
   return { states, connected };
 }
 
+export async function login(passphrase: string): Promise<boolean> {
+  const res = await fetch("/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ passphrase }),
+  });
+  return res.ok;
+}
+
+export async function logout(): Promise<void> {
+  await fetch("/api/logout", { method: "POST" });
+}
+
+/** True if the session cookie is valid (a gated GET returns 200). */
+export async function isAuthed(): Promise<boolean> {
+  return (await fetch("/api/state")).ok;
+}
+
 export async function sendCommand(entity_id: string, service: string, data?: Record<string, unknown>) {
-  const res = await fetch("/api/command", {
+  const post = () => fetch("/api/command", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ entity_id, service, data }),
   });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? `command failed (${res.status})`);
+  let res = await post();
+  if (res.status === 401) {
+    const body = (await res.json().catch(() => ({}))) as { stepUp?: boolean };
+    if (body.stepUp) {
+      // Sensitive action: re-confirm the passphrase (Face ID/WebAuthn is a
+      // follow-up slice), then retry once.
+      const pass = window.prompt("Confirm your passphrase to continue");
+      if (!pass || !(await login(pass))) throw new Error("confirmation required");
+      res = await post();
+    } else {
+      throw new Error("session expired — sign in again");
+    }
+  }
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `command failed (${res.status})`);
+  }
   return res.json();
 }
 

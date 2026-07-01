@@ -7,3 +7,5 @@ Requires=docker.service
 Type=oneshot
 WorkingDirectory=/opt/dobby
 ExecStart=/usr/bin/docker compose run --rm archive-job restore-test
+# Recompute the audit hash-chain from genesis; non-zero exit = tampering.
+ExecStart=/usr/bin/docker compose run --rm archive-job chain-verify

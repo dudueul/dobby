@@ -1,0 +1,112 @@
+# Alarm core — Alarmo owns the armed-state machine (alarm_control_panel.dobby).
+# Modes, entry/exit delays, and sensor assignment are configured in Alarmo's UI
+# (HACS integration — install + recommended settings in docs/13). This package
+# wires that state machine into the rest of the house: house_mode sync, the
+# triggered response (siren + lights + critical push), and incident detection.
+#
+# Fail-safe: delays and triggering run inside HA on the hub. The panel/BFF is a
+# thin client; if it dies the alarm still arms and fires. Enable Alarmo's MQTT
+# option (topic alarmo/state) so event-correlator mirrors detection off-HA.
+#
+# Policy (docs/13): arming may be automated; DISARM is never automated — it
+# requires a deliberate action (panel step-up, keypad code, or Alarmo code).
+
+automation:
+  # Reflect the alarm state into input_select.house_mode so the existing
+  # lighting/climate/audio automations follow arming without knowing Alarmo.
+  - id: alarm_mode_sync
+    alias: "Alarm: reflect armed state into house_mode"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.dobby
+        to: [armed_away, armed_night, disarmed]
+    action:
+      - service: input_select.select_option
+        target: { entity_id: input_select.house_mode }
+        data:
+          option: >-
+            {% if trigger.to_state.state == 'armed_away' %}away{% elif trigger.to_state.state == 'armed_night' %}night{% else %}home{% endif %}
+
+  # Follow a manual house_mode change (panel select or HA UI) into the alarm.
+  # The template condition makes the two sync automations settle, not loop.
+  - id: alarm_follows_house_mode
+    alias: "Alarm: follow a manual house_mode change"
+    trigger:
+      - platform: state
+        entity_id: input_select.house_mode
+        to: [away, night, home]
+    condition:
+      - condition: template
+        value_template: >-
+          {% set want = {'away': 'armed_away', 'night': 'armed_night', 'home': 'disarmed'}[trigger.to_state.state] %}
+          {{ states('alarm_control_panel.dobby') not in ['unknown', 'unavailable', want] }}
+    action:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'away' }}"
+            sequence:
+              - service: alarmo.arm
+                data: { entity_id: alarm_control_panel.dobby, mode: away }
+          - conditions: "{{ trigger.to_state.state == 'night' }}"
+            sequence:
+              - service: alarmo.arm
+                data: { entity_id: alarm_control_panel.dobby, mode: night }
+        default:
+          # house_mode -> home disarms; on the panel this path is step-up gated.
+          - service: alarmo.disarm
+            data: { entity_id: alarm_control_panel.dobby }
+
+  # The bell. Siren is optional hardware — called only if the entity exists.
+  - id: alarm_triggered_response
+    alias: "Alarm: triggered — siren, lights, critical push"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.dobby
+        to: triggered
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "🚨 ALARM TRIGGERED"
+          message: >-
+            {{ state_attr('alarm_control_panel.dobby', 'open_sensors') or 'Intrusion detected' }}
+          data: { tier: critical, tag: alarm }
+      - service: light.turn_on
+        target: { entity_id: [light.front_porch, light.driveway] }
+      - if:
+          - condition: template
+            value_template: "{{ states('siren.dobby_siren') not in ['unknown', 'unavailable'] }}"
+        then:
+          - service: siren.turn_on
+            target: { entity_id: siren.dobby_siren }
+          # Cap the noise: never siren longer than 3 minutes per trigger.
+          - delay: "00:03:00"
+          - service: siren.turn_off
+            target: { entity_id: siren.dobby_siren }
+
+  - id: alarm_silence_on_disarm
+    alias: "Alarm: silence the siren on disarm"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.dobby
+        to: disarmed
+    condition:
+      - condition: template
+        value_template: "{{ states('siren.dobby_siren') == 'on' }}"
+    action:
+      - service: siren.turn_off
+        target: { entity_id: siren.dobby_siren }
+
+  # Operational incident: the alarm itself going dark is a critical event
+  # (mirrors the climate.yaml unavailable pattern).
+  - id: alarm_unavailable_incident
+    alias: "Alarm: controller unavailable"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.dobby
+        to: [unavailable, unknown]
+        for: "00:05:00"
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "Alarm incident"
+          message: "alarm_control_panel.dobby is {{ states('alarm_control_panel.dobby') }} — check Alarmo."
+          data: { tier: critical }
