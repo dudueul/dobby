@@ -58,7 +58,9 @@ export const SERVICE_ALLOW = new Set<string>([
 ]);
 
 // go2rtc stream names (must match configs/frigate/config.yml go2rtc:streams).
-export const CAMERAS: string[] = ["front_door", "back_door", "driveway"];
+// Only advertise cameras Frigate actually defines — add back_door/driveway here
+// AND in configs/frigate/config.yml when the hardware lands.
+export const CAMERAS: string[] = ["front_door"];
 
 // Actions that should require a biometric re-confirm in the UI (advisory; the
 // client enforces the prompt, the BFF still only allows the service above).

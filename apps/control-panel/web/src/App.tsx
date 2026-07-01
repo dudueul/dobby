@@ -4,7 +4,8 @@ import { DoorTile } from "./components/DoorTile";
 import { ClimateTile } from "./components/ClimateTile";
 import { CameraTile } from "./components/CameraTile";
 
-const CAMERAS = ["front_door", "back_door", "driveway"];
+// Mirror server/config.ts CAMERAS — only streams Frigate actually defines.
+const CAMERAS = ["front_door"];
 const HOUSE_MODES = ["home", "away", "night", "guest"];
 
 export default function App() {
