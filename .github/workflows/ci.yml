@@ -33,11 +33,13 @@ jobs:
             services/event-correlator/intrusion.py \
             services/event-correlator/test_intrusion.py \
             services/archive-job/archive.py \
-            services/archive-job/test_archive.py
+            services/archive-job/audit_chain.py \
+            services/archive-job/test_archive.py \
+            services/archive-job/test_audit_chain.py
 
       - name: Pure-domain unit tests
         run: |
-          python -m pytest -q services/archive-job/test_archive.py
+          python -m pytest -q services/archive-job/test_archive.py services/archive-job/test_audit_chain.py
           python -m pytest -q services/event-correlator/test_intrusion.py
           python -m pytest -q services/nuki-ingestor/test_normalize.py
 

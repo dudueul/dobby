@@ -11,6 +11,10 @@ DUMP_DIR="${MEDIA_ROOT:-/srv/dobby/media}/dumps"
 mkdir -p "$DUMP_DIR"
 OUT="$DUMP_DIR/db_$(date +%F).sql.age"
 
+# Seal the audit hash-chain first so tonight's dump anchors today's heads
+# offsite (docs/15 #1) — a later rewrite of history can't match them.
+docker compose run --rm archive-job chain-seal
+
 docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" \
   | age -R "${ARCHIVE_RECIPIENTS:-/opt/dobby/secrets/recipients.txt}" > "$OUT"
 

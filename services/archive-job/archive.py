@@ -317,6 +317,12 @@ def main() -> None:
         cmd_restore(sys.argv[2])
     elif cmd == "restore-test":
         cmd_restore_test()
+    elif cmd == "chain-seal":
+        import audit_chain
+        audit_chain.cmd_seal(DB)
+    elif cmd == "chain-verify":
+        import audit_chain
+        sys.exit(audit_chain.cmd_verify(DB))
     else:
         sys.exit(f"unknown command {cmd}")
 

@@ -30,9 +30,10 @@ rule).
 
 ## Hardening backlog (ranked; each lands as its own slice)
 
-1. **Tamper-evident audit chain** — hash-chain `lock_events`/`admin_changes`
-   rows (prev-hash column, nightly head anchored into the B2 dump) so a hub
-   compromise can't silently rewrite history; plus retention GC.
+1. **Tamper-evident audit chain** — **landed**
+   (`services/archive-job/audit_chain.py`): nightly `chain-seal` before the
+   dump anchors heads offsite; monthly `chain-verify` recomputes from genesis.
+   Remaining from this item: audit retention GC (its own slice).
 2. **WebAuthn passkeys + per-user roles** — phishing-resistant step-up bound
    to the frozen ts.net RP ID; guest role that physically cannot call
    `lock.unlock`; actor attribution into `admin_changes`.
