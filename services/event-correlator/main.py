@@ -18,6 +18,8 @@ from zoneinfo import ZoneInfo
 import asyncpg
 import paho.mqtt.client as mqtt
 
+from intrusion import intrusion_verdict
+
 DATABASE_URL = os.environ["DATABASE_URL"]
 MQTT_HOST = os.environ.get("MQTT_HOST", "mosquitto")
 MQTT_USER = os.environ.get("MQTT_USER", "")
@@ -27,6 +29,8 @@ NIGHT_START = int(os.environ.get("NIGHT_START_HOUR", "22"))
 NIGHT_END = int(os.environ.get("NIGHT_END_HOUR", "7"))
 
 QUEUE: asyncio.Queue[dict] = asyncio.Queue()
+# Last alarm state seen on Alarmo's MQTT topic (None until the first publish).
+ALARM = {"state": None}
 
 
 def is_night(ts: datetime) -> bool:
@@ -84,6 +88,20 @@ async def upsert_camera_event(pool, ev: dict) -> None:
             elif night:
                 await alert(c, "night_person_no_unlock",
                             f"Night person at {after.get('camera')} with no unlock")
+            # Armed-state mirror: flag once per Frigate event (type 'end').
+            if ev.get("type") == "end":
+                unlock = await c.fetchrow(
+                    "SELECT event_time FROM lock_events WHERE action='unlock' "
+                    "AND event_time BETWEEN $1 AND $2 ORDER BY event_time DESC LIMIT 1",
+                    et - timedelta(seconds=300), et + timedelta(seconds=90),
+                )
+                verdict = intrusion_verdict(ALARM["state"], et,
+                                            unlock["event_time"] if unlock else None)
+                if verdict:
+                    await c.execute(
+                        "UPDATE camera_events SET retention_class='incident' WHERE id=$1", cam_id)
+                    await alert(c, verdict,
+                                f"Person at {after.get('camera')} while {ALARM['state']}")
 
 
 async def sweep_unlock_no_person(pool) -> None:
@@ -108,6 +126,9 @@ async def alert(conn, kind: str, message: str) -> None:
 
 
 def on_message(client, userdata, msg):
+    if msg.topic == "alarmo/state":
+        ALARM["state"] = msg.payload.decode(errors="replace").strip()
+        return
     try:
         QUEUE.put_nowait(json.loads(msg.payload.decode()))
     except Exception as exc:
@@ -120,7 +141,7 @@ def start_mqtt():
         client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
     client.on_message = on_message
     client.connect(MQTT_HOST, 1883, 60)
-    client.subscribe("frigate/events")
+    client.subscribe([("frigate/events", 0), ("alarmo/state", 0)])
     client.loop_start()
     return client
 
