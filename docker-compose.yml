@@ -231,6 +231,10 @@ services:
       VAPID_PRIVATE: ${VAPID_PRIVATE}
       VAPID_SUBJECT: ${VAPID_SUBJECT}
       PUSH_SHARED_SECRET: ${PUSH_SHARED_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_PASSPHRASE_HASH: ${ADMIN_PASSPHRASE_HASH}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
+      COOKIE_SECURE: ${COOKIE_SECURE}
       TZ: ${TZ}
     ports:
       - "8088:8088"     # LAN-only; reach remotely via the VPN, never port-forward

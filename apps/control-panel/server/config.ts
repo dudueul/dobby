@@ -15,6 +15,18 @@ export const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? "mailto:admin@home.arp
 // Shared secret HA presents (header x-push-secret) to fan out a push.
 export const PUSH_SHARED_SECRET = process.env.PUSH_SHARED_SECRET ?? "";
 
+// --- Auth (the BFF is fail-closed: no SESSION_SECRET/ADMIN_PASSPHRASE_HASH -> all
+// /api routes are refused). Generate the hash with:
+//   node -e "const c=require('crypto');const s=c.randomBytes(16);process.stdout.write(s.toString('hex')+':'+c.scryptSync(process.argv[1],s,32).toString('hex'))" "YOUR-PASSPHRASE"
+export const SESSION_SECRET = process.env.SESSION_SECRET ?? "";
+export const ADMIN_PASSPHRASE_HASH = process.env.ADMIN_PASSPHRASE_HASH ?? "";
+export const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+export const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS ?? 12 * 60 * 60 * 1000);
+export const STEP_UP_TTL_MS = Number(process.env.STEP_UP_TTL_MS ?? 2 * 60 * 1000);
+// Secure cookie flag; requires HTTPS. Only set false for a plain-HTTP LAN setup.
+export const COOKIE_SECURE = (process.env.COOKIE_SECURE ?? "true") !== "false";
+
 // Entities the panel may read AND the only ones state is forwarded for.
 export const ENTITY_ALLOW: string[] = [
   "lock.front_door_nuki",

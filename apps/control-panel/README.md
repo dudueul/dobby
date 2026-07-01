@@ -27,9 +27,13 @@ web/      Vite + React PWA (TanStack-friendly; add Router/Query as it grows)
 |---|---|---|
 | GET | `/api/state` | snapshot of allow-listed entities |
 | GET | `/api/stream` | **SSE** live state (snapshot + per-change) |
-| POST | `/api/command` | `{entity_id, service, data}` — allow-listed only |
+| POST | `/api/login` · `/api/logout` | passphrase → signed session cookie |
+| POST | `/api/command` | `{entity_id, service, data}` — allow-listed; sensitive = step-up |
 | POST | `/api/webrtc/:camera` | WebRTC offer → go2rtc answer (live view) |
 | GET/POST | `/api/push/*` | VAPID pubkey, subscribe, notify (HA-triggered) |
+
+All `/api` routes except `/api/login`, `/api/logout` and the shared-secret
+`/api/push/notify` require a valid session (fail-closed).
 
 ## Run
 
@@ -51,20 +55,33 @@ Prod (Docker; built PWA served by the BFF on :8088) — wired into the root
 - Web Push: `npx web-push generate-vapid-keys` → put the keys in `.env`
   (`VAPID_PUBLIC`/`VAPID_PRIVATE`), and have HA fire a `rest_command` to
   `/api/push/notify` (header `x-push-secret: $PUSH_SHARED_SECRET`).
+- **Auth (required):** set `SESSION_SECRET` (random) and `ADMIN_PASSPHRASE_HASH`.
+  Generate the hash:
+  ```bash
+  node -e "const c=require('crypto');const s=c.randomBytes(16);\
+  process.stdout.write(s.toString('hex')+':'+c.scryptSync(process.argv[1],s,32).toString('hex'))" "YOUR-PASSPHRASE"
+  ```
+  If either is unset the BFF **refuses all `/api`** (fail-closed). Secure cookies
+  require HTTPS — run behind a TLS reverse proxy (a follow-up slice), or set
+  `COOKIE_SECURE=false` only for a plain-HTTP LAN test.
 
 ## Security / boundaries (per docs/11)
 
 - **VPN-only**: reach the panel through WireGuard/Tailscale, never a public port.
 - The HA token lives **only in the BFF** env, never in the browser.
-- `lock.unlock` / arm are **sensitive** — the UI confirms; replace `confirm()`
-  with a **WebAuthn/passkey (Face ID)** gate for production.
+- **Session gate:** every `/api` route requires a signed `HttpOnly`+`SameSite=Strict`
+  session cookie; login is scrypt-verified, rate-limited, and Origin-checked.
+- `lock.unlock` / arm are **sensitive** — enforced **server-side step-up** (a
+  *fresh* session, re-confirmed via passphrase). Upgrading the confirm to
+  **WebAuthn/passkey (Face ID)** is the next follow-up slice.
 - The panel is **convenience, not control**: locks and the thermostat keep
   working if the panel/BFF/hub is down.
 - **Web Push = informational alerts** only; keep the HA Companion app for
   security-critical (Time-Sensitive/Critical) alarms.
 
-## Not done yet (scaffold)
+## Follow-up slices
 
-Auth on the panel itself (beyond VPN), persisted push subscriptions, multi-user
-roles, capability-driven UI for multi-zone HVAC, icons, and tests/CI for this
-app. See the repo gap analysis for the prioritized list.
+**WebAuthn/passkey** (replace the passphrase step-up with Face ID), **TLS
+termination** (HTTPS reverse proxy so Secure cookies + PWA install work),
+persisted push subscriptions, multi-user roles, capability-driven UI for
+multi-zone HVAC, and icons. See the repo gap analysis for the prioritized list.
