@@ -1,0 +1,9 @@
+[Unit]
+Description=dobby nightly encrypted audit-DB dump
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/dobby
+ExecStart=/opt/dobby/provisioning/dbdump.sh
