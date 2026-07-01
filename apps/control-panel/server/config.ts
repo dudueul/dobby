@@ -14,6 +14,8 @@ export const VAPID_PRIVATE = process.env.VAPID_PRIVATE ?? "";
 export const VAPID_SUBJECT = process.env.VAPID_SUBJECT ?? "mailto:admin@home.arpa";
 // Shared secret HA presents (header x-push-secret) to fan out a push.
 export const PUSH_SHARED_SECRET = process.env.PUSH_SHARED_SECRET ?? "";
+// Where push subscriptions persist (survives container restarts).
+export const PUSH_STORE = process.env.PUSH_STORE ?? "/data/push-subscriptions.json";
 
 // --- Auth (the BFF is fail-closed: no SESSION_SECRET/ADMIN_PASSPHRASE_HASH -> all
 // /api routes are refused). Generate the hash with:
