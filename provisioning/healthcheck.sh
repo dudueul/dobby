@@ -36,4 +36,15 @@ for n in /dev/nvme?n1; do
   [[ -n "${pct:-}" && "$pct" -gt 80 ]] && say "NVMe $n wear ${pct}%"
 done
 
+# 6. page a human: problems go out as a critical push (best effort — a dead
+# panel is itself one of the problems this reports, hence the journal too)
+if [[ $problems -gt 0 && -f /opt/dobby/.env ]]; then
+  secret="$(grep -E '^PUSH_SHARED_SECRET=' /opt/dobby/.env | cut -d= -f2-)"
+  if [[ -n "$secret" && "$secret" != CHANGE_ME* ]]; then
+    curl -m 5 -s -o /dev/null -X POST http://127.0.0.1:8088/api/push/notify \
+      -H "x-push-secret: $secret" -H 'Content-Type: application/json' \
+      -d "{\"title\":\"dobby health\",\"body\":\"$problems problem(s) — see journalctl -u dobby-maintenance\",\"tier\":\"critical\"}" || true
+  fi
+fi
+
 exit $problems
