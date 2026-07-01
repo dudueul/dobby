@@ -27,6 +27,8 @@ jobs:
         run: |
           python -m py_compile \
             services/nuki-ingestor/main.py \
+            services/nuki-ingestor/normalize.py \
+            services/nuki-ingestor/test_normalize.py \
             services/event-correlator/main.py \
             services/event-correlator/intrusion.py \
             services/event-correlator/test_intrusion.py \
@@ -37,6 +39,7 @@ jobs:
         run: |
           python -m pytest -q services/archive-job/test_archive.py
           python -m pytest -q services/event-correlator/test_intrusion.py
+          python -m pytest -q services/nuki-ingestor/test_normalize.py
 
       - name: Validate YAML / JSON configs
         run: python provisioning/validate-configs.py
