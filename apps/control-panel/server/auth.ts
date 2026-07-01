@@ -63,6 +63,13 @@ export function isFresh(s: Session, now: number, ttlMs: number): boolean {
   return now - s.authAt < ttlMs;
 }
 
+/** Effective request protocol behind a loopback TLS proxy (tailscale serve
+ * sets X-Forwarded-Proto). Diagnostic, not a security gate: a spoofed header
+ * only earns the client a Secure cookie its own browser then refuses. */
+export function effectiveProto(xfProto: string | undefined, socketEncrypted: boolean): "https" | "http" {
+  return xfProto === "https" || socketEncrypted ? "https" : "http";
+}
+
 /** Verify a passphrase against a stored "salthex:hashhex" scrypt hash. */
 export function verifyPassphrase(pass: string, stored: string): boolean {
   const [saltHex, hashHex] = (stored || "").split(":");
@@ -108,6 +115,17 @@ export function registerAuth(app: FastifyInstance): void {
   app.post("/api/login", async (req, reply) => {
     const now = Date.now();
     if (!authConfigured()) { reply.code(503); return { error: "auth not configured" }; }
+    // Fail loudly instead of issuing a Secure cookie the browser will drop:
+    // the shipped COOKIE_SECURE=true default used to break plain-HTTP login
+    // silently (it looked like a wrong passphrase).
+    const proto = effectiveProto(
+      req.headers["x-forwarded-proto"] as string | undefined,
+      Boolean((req.raw.socket as { encrypted?: boolean }).encrypted),
+    );
+    if (COOKIE_SECURE && proto !== "https") {
+      reply.code(400);
+      return { error: "insecure_origin", hint: "COOKIE_SECURE=true needs HTTPS (tailscale serve) or set COOKIE_SECURE=false for a LAN test" };
+    }
     if (!isAllowedOrigin(req.headers.origin, req.headers.host, ALLOWED_ORIGINS)) {
       reply.code(403); return { error: "bad origin" };
     }

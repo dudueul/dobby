@@ -11,7 +11,9 @@ import { registerAuth, needsStepUp, isFresh } from "./auth.js";
 import { PORT, GO2RTC_URL, CAMERAS, STEP_UP_TTL_MS } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app = Fastify({ logger: true });
+// Trust only the loopback proxy (tailscale serve) so req.ip = the real client
+// for login rate-limiting, and X-Forwarded-Proto is honored for Secure cookies.
+const app = Fastify({ logger: true, trustProxy: "127.0.0.1" });
 const ha = new HaClient();
 ha.start();
 

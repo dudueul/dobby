@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes, scryptSync } from "node:crypto";
 import {
-  signSession, verifySession, isFresh, verifyPassphrase, isAllowedOrigin,
+  signSession, verifySession, isFresh, verifyPassphrase, isAllowedOrigin, effectiveProto,
 } from "./auth.js";
 
 const SECRET = "unit-secret";
@@ -60,4 +60,12 @@ test("isAllowedOrigin_defaultsToSameOriginAsHost", () => {
 
 test("isAllowedOrigin_rejectsACrossOriginRequest", () => {
   assert.equal(isAllowedOrigin("http://evil:8088", "dobby:8088", []), false);
+});
+
+test("effectiveProto_trustsAForwardedHttpsHeader", () => {
+  assert.equal(effectiveProto("https", false), "https");
+});
+
+test("effectiveProto_reportsPlainHttpWhenNothingSaysOtherwise", () => {
+  assert.equal(effectiveProto(undefined, false), "http");
 });

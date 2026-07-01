@@ -239,4 +239,6 @@ services:
     volumes:
       - ${DATA_ROOT}/control-panel:/data   # push subscriptions survive restarts
     ports:
-      - "8088:8088"     # LAN-only; reach remotely via the VPN, never port-forward
+      # Loopback-only: the ONLY ingress is `tailscale serve` (TLS) on the host.
+      # HA's notify.dobby_push also reaches this via host loopback.
+      - "127.0.0.1:8088:8088"
