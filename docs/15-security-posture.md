@@ -34,9 +34,12 @@ rule).
    (`services/archive-job/audit_chain.py`): nightly `chain-seal` before the
    dump anchors heads offsite; monthly `chain-verify` recomputes from genesis.
    Remaining from this item: audit retention GC (its own slice).
-2. **WebAuthn passkeys + per-user roles** — phishing-resistant step-up bound
-   to the frozen ts.net RP ID; guest role that physically cannot call
-   `lock.unlock`; actor attribution into `admin_changes`.
+2. **WebAuthn passkeys + per-user roles** — **landed** (`users.ts`,
+   `webauthn.ts`): passkey step-up bound to the pinned RP ID with passphrase
+   fallback; guest sessions are role-blocked from locks/arming server-side;
+   commands are attributed (who/role/what) to `panel-commands.jsonl`.
+   Remaining from this item: ingest the attribution log into `device_events`
+   under the hash chain (its own slice).
 3. **Life-safety package** — smoke/CO/leak sensors, unconditional siren +
    critical push regardless of arm state (safety outranks security).
 4. **Power + connectivity resilience** — NUT-driven clean shutdown (protects
