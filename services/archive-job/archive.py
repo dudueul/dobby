@@ -7,8 +7,9 @@ The bucket is created once with a DEFAULT object-lock retention and a lifecycle
 rule (see lifecycle.json), so every PUT inherits immutability + a destruction
 horizon; the application key is PutObject-only so this job cannot delete remote
 objects. Video is encrypted with `age` (public recipients on the box; private
-key on a hardware token, only for restore). Audit months are exported to
-DuckDB-encrypted Parquet.
+key on a hardware token, only for restore). Audit retention is enforced by the
+chain-aware GC (audit_chain.py chain-gc) on top of the nightly encrypted dump;
+a DuckDB/Parquet export of aged-out months is a possible future slice.
 
 Subcommands:
   run            monthly age-out (default)
