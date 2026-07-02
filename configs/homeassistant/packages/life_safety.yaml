@@ -1,0 +1,95 @@
+# Life-safety — smoke / CO / water leak. UNCONDITIONAL: these fire regardless
+# of arm state, house mode, or quiet hours; safety outranks security and
+# comfort (docs/15 backlog #3).
+#
+# Entity names are the convention the hardware slice must follow when the
+# Zigbee sensors land (docs/09): binary_sensor.smoke_hallway,
+# binary_sensor.co_hallway, binary_sensor.leak_laundry,
+# binary_sensor.leak_water_heater. Triggers on absent entities simply never
+# fire, so this package is safe to ship ahead of the hardware.
+
+automation:
+  - id: safety_smoke_co_response
+    alias: "Safety: smoke/CO — siren, lights, HVAC off, critical push"
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.smoke_hallway
+          - binary_sensor.co_hallway
+        to: "on"
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "🔥 SMOKE / CO ALARM"
+          message: "{{ trigger.to_state.attributes.friendly_name }} tripped. Get out, then check the panel."
+          data: { tier: critical, tag: life_safety }
+      # Stop the air handler so the ductwork doesn't spread smoke/CO.
+      - service: climate.set_hvac_mode
+        target: { entity_id: climate.hvac }
+        data: { hvac_mode: "off" }
+      # Light the escape path.
+      - service: light.turn_on
+        target: { entity_id: [light.front_porch, light.driveway] }
+      - if:
+          - condition: template
+            value_template: "{{ states('siren.dobby_siren') not in ['unknown', 'unavailable'] }}"
+        then:
+          - service: siren.turn_on
+            target: { entity_id: siren.dobby_siren }
+
+  - id: safety_smoke_co_cleared
+    alias: "Safety: smoke/CO cleared — silence, note"
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.smoke_hallway
+          - binary_sensor.co_hallway
+        to: "off"
+        for: "00:02:00"
+    action:
+      - if:
+          - condition: template
+            value_template: "{{ states('siren.dobby_siren') == 'on' }}"
+        then:
+          - service: siren.turn_off
+            target: { entity_id: siren.dobby_siren }
+      - service: notify.dobby_push
+        data:
+          message: "Smoke/CO cleared for 2 minutes. HVAC was left OFF — restore it from the panel."
+          data: { tier: normal, tag: life_safety }
+
+  - id: safety_leak_response
+    alias: "Safety: water leak — critical push"
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.leak_laundry
+          - binary_sensor.leak_water_heater
+        to: "on"
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "💧 WATER LEAK"
+          message: "{{ trigger.to_state.attributes.friendly_name }} is wet. Kill the water at the main."
+          data: { tier: critical, tag: life_safety }
+      # Hardware follow-up (docs/15): a Z-Wave shutoff valve on the main makes
+      # this response automatic — add water_valve.close here when it lands.
+
+  # A safety sensor going dark is itself a safety event.
+  - id: safety_sensor_offline
+    alias: "Safety: life-safety sensor offline"
+    trigger:
+      - platform: state
+        entity_id:
+          - binary_sensor.smoke_hallway
+          - binary_sensor.co_hallway
+          - binary_sensor.leak_laundry
+          - binary_sensor.leak_water_heater
+        to: [unavailable, unknown]
+        for: "01:00:00"
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "Life-safety sensor offline"
+          message: "{{ trigger.to_state.attributes.friendly_name }} has been {{ trigger.to_state.state }} for an hour."
+          data: { tier: critical, tag: life_safety }
