@@ -22,6 +22,7 @@ YAML_FILES = [
     "configs/frigate/config.yml",
     "configs/zigbee2mqtt/configuration.yaml",
     "configs/grafana/provisioning/datasources/postgres.yml",
+    "configs/grafana/provisioning/dashboards/provider.yml",
     "configs/homeassistant/configuration.yaml",
     "configs/homeassistant/packages/alarm.yaml",
     "configs/homeassistant/packages/audit_mqtt.yaml",
@@ -34,7 +35,11 @@ YAML_FILES = [
     "configs/homeassistant/packages/climate.yaml",
     "configs/esphome/presence-room.example.yaml",
 ]
-JSON_FILES = ["services/archive-job/lifecycle.json"]
+JSON_FILES = [
+    "services/archive-job/lifecycle.json",
+    "configs/grafana/provisioning/dashboards/security-overview.json",
+    "configs/grafana/provisioning/dashboards/ops-health.json",
+]
 
 
 def main() -> int:

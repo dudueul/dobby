@@ -1,0 +1,80 @@
+{
+  "uid": "dobby-security",
+  "title": "Security overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-7d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Anomalies (7d)",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT count(*) AS anomalies FROM lock_events WHERE anomaly IS NOT NULL AND event_time > now() - interval '7 days'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Incidents & admin changes (latest)",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 5, "w": 18, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT changed_at, actor, change_type, target FROM admin_changes ORDER BY changed_at DESC LIMIT 10"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Door activity (latest)",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT event_time, door_key, action, access_method, user_name, anomaly FROM lock_events WHERE action NOT LIKE 'state_%' ORDER BY event_time DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Person events per day (14d)",
+      "type": "timeseries",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 5 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('day', event_time) AS time, count(*) AS persons FROM camera_events WHERE label = 'person' AND event_time > now() - interval '14 days' GROUP BY 1 ORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "HVAC activity (latest)",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT event_time, event_type, old_state, new_state, (raw->>'by_user')::boolean AS by_human FROM device_events WHERE device_key = 'hvac' ORDER BY event_time DESC LIMIT 15"
+        }
+      ]
+    }
+  ]
+}

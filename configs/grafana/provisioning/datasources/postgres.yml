@@ -1,6 +1,7 @@
 apiVersion: 1
 datasources:
   - name: dobby-audit
+    uid: dobby-audit   # stable uid so provisioned dashboards can pin it
     type: postgres
     access: proxy
     url: postgres:5432

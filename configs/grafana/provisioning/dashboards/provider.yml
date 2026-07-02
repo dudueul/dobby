@@ -1,0 +1,7 @@
+# Load every dashboard JSON in this directory (docs/08 weekly review surface).
+apiVersion: 1
+providers:
+  - name: dobby
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards
