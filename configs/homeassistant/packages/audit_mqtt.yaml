@@ -1,0 +1,65 @@
+# Republish auditable device transitions onto MQTT (dobby/events/<domain>/<key>)
+# so the event-correlator writes device_events rows — the activity history the
+# audit DB promised (docs/05, docs/10) — independent of HA's 30-day recorder.
+# Payload contract: JSON {event_type, old_state, new_state, value?, by_user}.
+
+automation:
+  - id: audit_publish_hvac_mode
+    alias: "Audit: publish HVAC mode changes"
+    trigger:
+      - platform: state
+        entity_id: climate.hvac
+    condition:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and trigger.from_state.state != trigger.to_state.state }}
+    action:
+      - service: mqtt.publish
+        data:
+          topic: dobby/events/climate/hvac
+          payload: >-
+            {{ {'event_type': 'state_change',
+                'old_state': trigger.from_state.state,
+                'new_state': trigger.to_state.state,
+                'by_user': trigger.to_state.context.user_id is not none} | tojson }}
+
+  - id: audit_publish_hvac_setpoint
+    alias: "Audit: publish HVAC setpoint changes"
+    trigger:
+      - platform: state
+        entity_id: climate.hvac
+        attribute: temperature
+    condition:
+      - condition: template
+        value_template: "{{ trigger.from_state is not none and trigger.to_state is not none }}"
+    action:
+      - service: mqtt.publish
+        data:
+          topic: dobby/events/climate/hvac
+          payload: >-
+            {{ {'event_type': 'setpoint_change',
+                'old_state': trigger.from_state.attributes.temperature | string,
+                'new_state': trigger.to_state.attributes.temperature | string,
+                'value': trigger.to_state.attributes.temperature,
+                'by_user': trigger.to_state.context.user_id is not none} | tojson }}
+
+  - id: audit_publish_lights
+    alias: "Audit: publish exterior light transitions"
+    trigger:
+      - platform: state
+        entity_id: [light.front_porch, light.driveway]
+    condition:
+      - condition: template
+        value_template: >-
+          {{ trigger.from_state is not none and trigger.to_state is not none
+             and trigger.from_state.state != trigger.to_state.state }}
+    action:
+      - service: mqtt.publish
+        data:
+          topic: "dobby/events/light/{{ trigger.entity_id.split('.')[1] }}"
+          payload: >-
+            {{ {'event_type': 'state_change',
+                'old_state': trigger.from_state.state,
+                'new_state': trigger.to_state.state,
+                'by_user': trigger.to_state.context.user_id is not none} | tojson }}

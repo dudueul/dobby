@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 import asyncpg
 import paho.mqtt.client as mqtt
 
+from device_events import plan_device_event
 from intrusion import intrusion_verdict
 
 DATABASE_URL = os.environ["DATABASE_URL"]
@@ -29,6 +30,7 @@ NIGHT_START = int(os.environ.get("NIGHT_START_HOUR", "22"))
 NIGHT_END = int(os.environ.get("NIGHT_END_HOUR", "7"))
 
 QUEUE: asyncio.Queue[dict] = asyncio.Queue()
+DEVICE_QUEUE: asyncio.Queue[dict] = asyncio.Queue()
 # Last alarm state seen on Alarmo's MQTT topic (None until the first publish).
 ALARM = {"state": None}
 
@@ -129,6 +131,12 @@ def on_message(client, userdata, msg):
     if msg.topic == "alarmo/state":
         ALARM["state"] = msg.payload.decode(errors="replace").strip()
         return
+    if msg.topic.startswith("dobby/events/"):
+        row = plan_device_event(msg.topic, msg.payload.decode(errors="replace"),
+                                datetime.now(timezone.utc).timestamp())
+        if row:
+            DEVICE_QUEUE.put_nowait(row)
+        return
     try:
         QUEUE.put_nowait(json.loads(msg.payload.decode()))
     except Exception as exc:
@@ -141,7 +149,7 @@ def start_mqtt():
         client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
     client.on_message = on_message
     client.connect(MQTT_HOST, 1883, 60)
-    client.subscribe([("frigate/events", 0), ("alarmo/state", 0)])
+    client.subscribe([("frigate/events", 0), ("alarmo/state", 0), ("dobby/events/#", 0)])
     client.loop_start()
     return client
 
@@ -155,10 +163,32 @@ async def worker(pool):
             print(f"correlate failed: {exc}")
 
 
+async def device_worker(pool):
+    while True:
+        row = await DEVICE_QUEUE.get()
+        try:
+            async with pool.acquire() as c:
+                await c.execute(
+                    """
+                    INSERT INTO device_events (source, area_key, device_key, event_time,
+                      event_type, old_state, new_state, value_numeric, raw, dedupe_key)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                    ON CONFLICT (dedupe_key) DO NOTHING
+                    """,
+                    row["source"], row["area_key"], row["device_key"],
+                    datetime.now(timezone.utc), row["event_type"], row["old_state"],
+                    row["new_state"], row["value_numeric"],
+                    json.dumps(row["raw"], default=str), row["dedupe_key"],
+                )
+        except Exception as exc:
+            print(f"device event insert failed: {exc}")
+
+
 async def main():
     pool = await asyncpg.create_pool(DATABASE_URL)
     start_mqtt()
     asyncio.create_task(worker(pool))
+    asyncio.create_task(device_worker(pool))
     while True:
         try:
             await sweep_unlock_no_person(pool)
