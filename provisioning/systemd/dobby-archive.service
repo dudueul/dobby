@@ -7,3 +7,6 @@ Requires=docker.service
 Type=oneshot
 WorkingDirectory=/opt/dobby
 ExecStart=/usr/bin/docker compose run --rm archive-job run
+# Monthly audit retention GC — prunes only sealed+expired rows and refuses to
+# run if chain-verify finds a mismatch (never launders tampering).
+ExecStart=/usr/bin/docker compose run --rm archive-job chain-gc

@@ -5,6 +5,7 @@
 CREATE TABLE IF NOT EXISTS audit_chain (
   id BIGSERIAL PRIMARY KEY,
   table_name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'seal',   -- seal | checkpoint (GC prune frontier)
   last_row_id BIGINT NOT NULL,
   rows_sealed BIGINT NOT NULL,
   head_hash CHAR(64) NOT NULL,

@@ -35,3 +35,19 @@ def canonicalRow_preventsFieldBleedBetweenColumns():
 
 def canonicalRow_encodesNoneAsEmpty():
     assert audit_chain.canonical_row((None,)) == ""
+
+
+def gcBoundary_returnsNone_whenNothingIsSealedYet():
+    assert audit_chain.gc_boundary(None, 500) is None
+
+
+def gcBoundary_returnsNone_whenNothingHasExpired():
+    assert audit_chain.gc_boundary(500, None) is None
+
+
+def gcBoundary_neverPrunesPastTheSealFrontier():
+    assert audit_chain.gc_boundary(300, 900) == 300
+
+
+def gcBoundary_neverPrunesUnexpiredRows():
+    assert audit_chain.gc_boundary(900, 300) == 300

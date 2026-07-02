@@ -323,6 +323,9 @@ def main() -> None:
     elif cmd == "chain-verify":
         import audit_chain
         sys.exit(audit_chain.cmd_verify(DB))
+    elif cmd == "chain-gc":
+        import audit_chain
+        sys.exit(audit_chain.cmd_gc(DB, RETAIN["audit"]))
     else:
         sys.exit(f"unknown command {cmd}")
 

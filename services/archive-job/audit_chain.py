@@ -41,7 +41,19 @@ TABLES = {
 }
 
 
+# Retention GC needs each table's time column to find expired rows.
+TIME_COLS = {"lock_events": "event_time", "admin_changes": "changed_at"}
+
+
 # ---------- pure core (unit-testable, no I/O) ----------
+def gc_boundary(last_sealed_id: int | None, max_expired_id: int | None) -> int | None:
+    """Rows may be pruned only when BOTH sealed (offsite head covers them) and
+    past retention — never past the seal frontier, never merely old."""
+    if not last_sealed_id or not max_expired_id:
+        return None
+    return min(last_sealed_id, max_expired_id)
+
+
 def canonical_row(values: tuple) -> str:
     """Deterministic single-line encoding; the unit separator prevents field
     bleed (('ab','c') never collides with ('a','bc'))."""
@@ -93,32 +105,89 @@ def cmd_seal(db_url: str) -> None:
         conn.commit()
 
 
-def cmd_verify(db_url: str) -> int:
-    """Recompute every chain from genesis; 0 = all heads match."""
-    import psycopg
+def _latest_checkpoint(conn, table: str) -> tuple[int, str]:
+    cp = conn.execute(
+        "SELECT last_row_id, head_hash FROM audit_chain "
+        "WHERE table_name=%s AND kind='checkpoint' ORDER BY id DESC LIMIT 1", (table,)
+    ).fetchone()
+    return (cp[0], cp[1]) if cp else (0, GENESIS)
+
+
+def _verify_conn(conn) -> int:
+    """Recompute every chain from its latest checkpoint; count mismatches.
+    Seals at or before a checkpoint are subsumed by it (their rows are pruned);
+    later seals must fold out of the checkpoint head — extend_chain composes
+    in batches, so this equals the original from-genesis computation."""
     bad = 0
+    for table in TABLES:
+        cp_id, cp_head = _latest_checkpoint(conn, table)
+        head, after_id = cp_head, cp_id
+        seals = conn.execute(
+            "SELECT id, last_row_id, head_hash FROM audit_chain "
+            "WHERE table_name=%s AND kind='seal' AND last_row_id > %s ORDER BY id",
+            (table, after_id),
+        ).fetchall()
+        for seal_id, last_row_id, recorded in seals:
+            head = extend_chain(head, _rows(conn, table, after_id, last_row_id))
+            after_id = last_row_id
+            if head != recorded:
+                bad += 1
+                print(f"[chain] MISMATCH {table} seal {seal_id}: history was altered")
+                conn.execute(
+                    "INSERT INTO admin_changes (actor, change_type, target, raw) "
+                    "VALUES ('audit-chain','incident','tamper', %s::jsonb)",
+                    (json.dumps({"table": table, "seal_id": seal_id}),),
+                )
+        print(f"[chain] {table}: {len(seals)} seals verified from checkpoint id<={cp_id}")
+    return bad
+
+
+def cmd_verify(db_url: str) -> int:
+    """Recompute every chain; 0 = all heads match."""
+    import psycopg
     with psycopg.connect(db_url) as conn:
         conn.execute("SET TIME ZONE 'UTC'")
-        for table in TABLES:
-            seals = conn.execute(
-                "SELECT id, last_row_id, head_hash FROM audit_chain "
-                "WHERE table_name=%s ORDER BY id", (table,)
-            ).fetchall()
-            head, after_id = GENESIS, 0
-            for seal_id, last_row_id, recorded in seals:
-                head = extend_chain(head, _rows(conn, table, after_id, last_row_id))
-                after_id = last_row_id
-                if head != recorded:
-                    bad += 1
-                    print(f"[chain] MISMATCH {table} seal {seal_id}: history was altered")
-                    conn.execute(
-                        "INSERT INTO admin_changes (actor, change_type, target, raw) "
-                        "VALUES ('audit-chain','incident','tamper', %s::jsonb)",
-                        (json.dumps({"table": table, "seal_id": seal_id}),),
-                    )
-            print(f"[chain] {table}: {len(seals)} seals {'OK' if not bad else 'CHECKED'}")
+        bad = _verify_conn(conn)
         conn.commit()
     return 1 if bad else 0
+
+
+def cmd_gc(db_url: str, retain_days: int) -> int:
+    """Prune audit rows past retention, but only up to the seal frontier, and
+    only after a clean verify (GC must never launder tampering into a fresh
+    checkpoint). Records a checkpoint head so verify keeps working."""
+    import psycopg
+    with psycopg.connect(db_url) as conn:
+        conn.execute("SET TIME ZONE 'UTC'")
+        if _verify_conn(conn):
+            conn.commit()
+            print("[chain] GC refused: verify found mismatches")
+            return 1
+        for table, time_col in TIME_COLS.items():
+            cp_id, cp_head = _latest_checkpoint(conn, table)
+            last_seal = conn.execute(
+                "SELECT max(last_row_id) FROM audit_chain WHERE table_name=%s AND kind='seal'",
+                (table,),
+            ).fetchone()[0]
+            max_expired = conn.execute(
+                f"SELECT max(id) FROM {table} WHERE {time_col} < now() - make_interval(days => %s)",
+                (retain_days,),
+            ).fetchone()[0]
+            boundary = gc_boundary(last_seal, max_expired)
+            if boundary is None or boundary <= cp_id:
+                continue
+            head = extend_chain(cp_head, _rows(conn, table, cp_id, boundary))
+            pruned = conn.execute(
+                f"DELETE FROM {table} WHERE id <= %s", (boundary,)
+            ).rowcount
+            conn.execute(
+                "INSERT INTO audit_chain (table_name, kind, last_row_id, rows_sealed, head_hash) "
+                "VALUES (%s,'checkpoint',%s,%s,%s)",
+                (table, boundary, pruned, head),
+            )
+            print(f"[chain] {table}: pruned {pruned} rows through id {boundary} (checkpointed)")
+        conn.commit()
+    return 0
 
 
 if __name__ == "__main__":
