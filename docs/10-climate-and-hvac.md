@@ -1,13 +1,21 @@
 # 10 — Climate / HVAC
 
-## Assumption (verify on site)
+## Confirmed: 24 V heat pump
 
-The system was installed ~2011 near **Durham, NC** (Piedmont, IECC climate zone
-~4A, mixed-humid). The dominant residential configuration there — then and now —
-is a **24 V central split-system air-source heat pump with electric
-auxiliary/emergency heat strips** (forced air). This guide is drafted for that
-case; the other three possibilities are covered below so you can confirm by
-pulling the old Honeywell off the wall.
+**Owner-confirmed heat pump** (installed ~2011 near **Durham, NC**, zone 4A
+mixed-humid). The existing stat is a **Honeywell TH6220D1002** (FocusPRO 6000,
+2H/2C) — a 24 V, heat-pump-capable thermostat with O/B and AUX/E terminals,
+which corroborates the confirmation and makes the **T6 Pro Z-Wave a drop-in
+replacement**. The heat-pump path below is the plan of record; the other
+system types remain only as reference.
+
+**Capture during the swap** (photograph the terminals — these fill blanks,
+they don't change the plan):
+1. **O/B wire landed** at the stat (expected: yes).
+2. **C-wire present** (2011 installs usually have one; strongly preferred so
+   the T6 mesh-repeats instead of sleeping on batteries).
+3. **Any gas furnace** (= dual-fuel → add the C7089U outdoor sensor, below).
+4. Single zone assumed — note any zone panel/dampers.
 
 > **The app → hub → controller pattern you asked about is correct** and is the
 > same boundary as the locks: the native app (or the HA Companion app / Apple
@@ -17,14 +25,11 @@ pulling the old Honeywell off the wall.
 > vendor cloud. You likely don't need a custom app — the HA Companion app
 > already gives you a local, fail-safe thermostat client.
 
-## STEP ZERO — confirm the type before buying
-
-Kill power at the air-handler/furnace switch, pull the stat, photograph the
-terminals + wires:
+## Reference — the other system types (not this house)
 
 | Type | How to tell | Path |
 |---|---|---|
-| **(a) 24 V heat pump** ⭐ *(most likely here)* | thin wires to **R/Rc, C, Y, G, O/B, W2/Aux, E**; outdoor condenser runs in winter too; air handler has heat strips | Z-Wave **heat-pump** thermostat |
+| **(a) 24 V heat pump** ⭐ *(CONFIRMED here)* | thin wires to **R/Rc, C, Y, G, O/B, W2/Aux, E**; outdoor condenser runs in winter too; air handler has heat strips | Z-Wave **heat-pump** thermostat |
 | (a′) 24 V conventional furnace + AC | thin wires R/W/Y/G/C; **no O/B**; a gas furnace heats | same thermostat, conventional mode |
 | (b) Line-voltage baseboard | **thick** 120/240 V wires, 2–4 conductors | Sinopé Zigbee line-voltage stat |
 | (c) Millivolt | 2 thin wires, **no transformer**, <0.75 V | keep mechanical stat + parallel relay |
