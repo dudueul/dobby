@@ -77,23 +77,83 @@ automation:
         then:
           - service: siren.turn_on
             target: { entity_id: siren.dobby_siren }
-          # Cap the noise: never siren longer than 3 minutes per trigger.
-          - delay: "00:03:00"
+      # Wired bell via the Konnected output (docs/13) — same 3-minute cap.
+      - if:
+          - condition: template
+            value_template: "{{ states('switch.dobby_siren_out') not in ['unknown', 'unavailable'] }}"
+        then:
+          - service: switch.turn_on
+            target: { entity_id: switch.dobby_siren_out }
+      - delay: "00:03:00"
+      - if:
+          - condition: template
+            value_template: "{{ states('siren.dobby_siren') == 'on' }}"
+        then:
           - service: siren.turn_off
             target: { entity_id: siren.dobby_siren }
+      - if:
+          - condition: template
+            value_template: "{{ states('switch.dobby_siren_out') == 'on' }}"
+        then:
+          - service: switch.turn_off
+            target: { entity_id: switch.dobby_siren_out }
 
   - id: alarm_silence_on_disarm
-    alias: "Alarm: silence the siren on disarm"
+    alias: "Alarm: silence the sirens on disarm"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.dobby
+        to: disarmed
+    action:
+      - if:
+          - condition: template
+            value_template: "{{ states('siren.dobby_siren') == 'on' }}"
+        then:
+          - service: siren.turn_off
+            target: { entity_id: siren.dobby_siren }
+      - if:
+          - condition: template
+            value_template: "{{ states('switch.dobby_siren_out') == 'on' }}"
+        then:
+          - service: switch.turn_off
+            target: { entity_id: switch.dobby_siren_out }
+
+  # Keep the Konnected board's hub-down fallback flag in step with Alarmo
+  # (docs/13): armed away/night -> flag on; disarm -> flag off. If the hub
+  # then dies, the board sirens locally on a perimeter opening.
+  - id: alarm_sync_fallback_flag
+    alias: "Alarm: sync the Konnected fallback armed flag"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.dobby
+        to: [armed_away, armed_night, disarmed]
+    condition:
+      - condition: template
+        value_template: "{{ states('switch.alarm_fallback_armed') not in ['unknown', 'unavailable'] }}"
+    action:
+      - service: >-
+          {% if trigger.to_state.state == 'disarmed' %}switch.turn_off{% else %}switch.turn_on{% endif %}
+        target: { entity_id: switch.alarm_fallback_armed }
+
+  # Duress: create an Alarmo user literally named "Duress" (docs/13) and hand
+  # out its code as "the code you use if someone forces you to disarm". The
+  # house disarms normally and stays quiet — the other adults' phones get a
+  # critical alert. Nothing visible changes for the coercer.
+  - id: alarm_duress_silent_alert
+    alias: "Alarm: duress code used — silent critical alert"
     trigger:
       - platform: state
         entity_id: alarm_control_panel.dobby
         to: disarmed
     condition:
       - condition: template
-        value_template: "{{ states('siren.dobby_siren') == 'on' }}"
+        value_template: "{{ (trigger.to_state.attributes.changed_by | default('')) == 'Duress' }}"
     action:
-      - service: siren.turn_off
-        target: { entity_id: siren.dobby_siren }
+      - service: notify.dobby_push
+        data:
+          title: "⚠️ DURESS disarm"
+          message: "The duress code disarmed the house. Someone may be under coercion — do NOT call the house; check cameras, call for help."
+          data: { tier: critical, tag: duress }
 
   # Operational incident: the alarm itself going dark is a critical event
   # (mirrors the climate.yaml unavailable pattern).

@@ -83,18 +83,22 @@ doesn't cut out when you sit down.
 
 *Use a licensed electrician for mains relays.*
 
-## 7b. Climate / HVAC (assumes a 24V heat pump — see docs/10)
+## 7b. Climate / HVAC (24V heat pump, TWO zones — confirmed, docs/10)
 
 | Item | Current pick | Qty | ~$ |
 |---|---|---|---|
-| Heat-pump thermostat (24V) | **Honeywell T6 Pro Z-Wave (TH6320ZW, `-2007`)** | 1 per zone | 80–120 |
-| Dual-fuel outdoor sensor | **Honeywell C7089U** (only if heat pump + gas backup) | 0–1 | 25–40 |
-| C-wire adapter (if no C) | add-a-wire / Fast-Stat / furnace-board adapter | 0–1 | 20–40 |
-| (line-voltage homes) | **Sinopé TH1123ZB/TH1124ZB** Zigbee | 1 per circuit | 50–90 |
-| (mini-split homes) | **ESP32 + ESPHome CN105** pigtail + level shifter | 1 per head | 10–25 |
+| Heat-pump thermostat (24V) | **Honeywell T6 Pro Z-Wave (TH6320ZW, `-2007`)** | **2** (one per HZ221 zone) | 80–120 ea |
+| Dual-fuel outdoor sensor | ~~C7089U~~ — **not needed** (all-electric house, confirmed) | 0 | — |
+| C-wire adapter (if a zone run lacks a spare) | add-a-wire / Fast-Stat | 0–2 | 20–40 |
 
-Verify the HVAC type first (`docs/10` → STEP ZERO). Heat pump is the most likely
-for a ~2011 Durham NC home.
+## 7c. Wired alarm retrofit (Konnected — reuses the old VISTA plant, docs/13)
+
+| Item | Current pick | Qty | ~$ |
+|---|---|---|---|
+| Zone board | **Konnected Alarm Panel Pro** (ESP32, Ethernet, 12 zones) | 1 | 120–150 |
+| Siren | reuse the VISTA 12 V bell, or any 12 V siren | 0–1 | 0–25 |
+| Wall-tablet power | 12V→5V USB buck on the freed keypad wire pair | 1 | 5–10 |
+| Wall tablet (panel PWA kiosk) | PoE Android panel, or used Fire HD 8 + Fully Kiosk | 1 | 60–200 |
 
 ## 8. Whole-house audio (per room)
 

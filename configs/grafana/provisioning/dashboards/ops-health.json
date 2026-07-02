@@ -1,0 +1,66 @@
+{
+  "uid": "dobby-ops",
+  "title": "Ops health",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": { "from": "now-30d", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Camera events (24h) — 0 means a dead camera",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT count(*) AS events FROM camera_events WHERE event_time > now() - interval '24 hours'"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Audit-chain seals",
+      "type": "stat",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT count(*) AS seals FROM audit_chain"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Locks reporting battery-critical",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT door_key, max(event_time) AS last_report FROM lock_events WHERE battery_critical IS TRUE GROUP BY door_key"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Archive runs (latest)",
+      "type": "table",
+      "datasource": { "type": "postgres", "uid": "dobby-audit" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 5 },
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "rawSql": "SELECT * FROM archive_runs ORDER BY id DESC LIMIT 12"
+        }
+      ]
+    }
+  ]
+}

@@ -1,60 +1,111 @@
+%% dobby system architecture — how every subsystem talks to the others.
+%% Render: any Mermaid viewer. Kept current as slices land (docs/15 review rule).
 flowchart TD
-  subgraph Apple[Apple ecosystem]
-    Home[Apple Home / Siri / Wallet Home Key]
-    Hub[Apple TV / HomePod]
+
+  %% ---------- clients ----------
+  subgraph Clients[Family clients]
+    Phone[Phones - panel PWA + HA Companion<br/>Tailscale On-Demand VPN]
+    Tablet[Wall tablet at entry<br/>panel PWA in kiosk mode]
+    Laptop[Admin laptop<br/>HA admin + Grafana + SSH]
   end
 
-  subgraph Edge[Devices on the LAN]
-    Nuki[Nuki locks + Keypad 2 NFC + physical key]
-    Cams[PoE cameras VLAN30]
-    Zig[Zigbee sensors/lights]
-    ZW[Z-Wave outdoor motion/relays]
-    Pres[mmWave room presence]
-    Spk[Room speakers / snapclients]
+  subgraph Access[Access edge - zero public listeners]
+    TS[tailscale serve on the NUC<br/>WireGuard in, LetsEncrypt TLS<br/>hub.tailnet.ts.net 443/8443/10000]
   end
 
-  subgraph Hub[dobby mini-PC — Ubuntu Server, Docker]
-    MQTT[Mosquitto MQTT]
-    HA[Home Assistant]
-    Z2M[Zigbee2MQTT]
-    ZUI[Z-Wave JS UI]
-    Frig[Frigate NVR + go2rtc]
-    Scr[Scrypted → HKSV]
-    PG[(PostgreSQL audit + catalog)]
-    Graf[Grafana]
-    Ing[nuki-ingestor]
-    Corr[event-correlator]
-    MA[Music Assistant]
-    Snap[Snapserver]
-    Arc[archive-job]
-    Disk[(LUKS video disk<br/>full 1y · event 2y)]
+  %% ---------- panel ----------
+  subgraph Panel[Control panel - convenience, not control]
+    BFF[Fastify BFF - loopback 8088<br/>sessions, roles, passkeys<br/>entity + service allow-list<br/>command attribution log]
   end
 
-  subgraph Cloud[Outbound only — encrypted]
-    B2[(Backblaze B2<br/>cold, Object-Lock)]
-    Push[Notifications]
+  %% ---------- brain ----------
+  subgraph Brain[Home Assistant - the device authority]
+    HA[Home Assistant core]
+    Alarmo[Alarmo state machine<br/>modes, delays, per-person codes,<br/>Duress user]
+    Pkgs[Packages: climate two-zone,<br/>presence auto-arm + watchdog,<br/>life-safety, notify, audit republish]
   end
 
-  Home --> Hub --> Nuki
-  Nuki --> MQTT
-  Cams --> Frig
-  Zig --> Z2M --> MQTT
-  ZW --> ZUI --> MQTT
-  Pres --> HA
-  MQTT --> HA
-  MQTT --> Ing --> PG
-  Frig --> Disk
-  Frig --> PG
-  Frig --> Corr
-  Scr --> Home
-  HA --> PG
-  HA --> Corr
-  Corr --> HA
-  PG --> Graf
-  HA --> MA --> Snap --> Spk
-  Disk --> Arc
-  PG --> Arc
-  Arc -->|verify then prune| Disk
-  Arc -->|age/encrypt + PutObject| B2
-  Corr --> Push
-  HA --> Push
+  %% ---------- bus ----------
+  MQTT[(Mosquitto MQTT<br/>auth required, LAN-only)]
+
+  %% ---------- gateways ----------
+  subgraph Gateways[Protocol gateways - hide every radio and wire]
+    ZUI[Z-Wave JS UI + USB stick]
+    Z2M[Zigbee2MQTT + coordinator]
+    Kon[Konnected ESP32 via ESPHome<br/>wired zones + siren output<br/>on-device fallback logic]
+    Frig[Frigate NVR + go2rtc<br/>OpenVINO person detection]
+  end
+
+  %% ---------- field ----------
+  subgraph Field[Field devices]
+    T61[T6 Pro Z-Wave thermostat zone 1]
+    T62[T6 Pro Z-Wave thermostat zone 2]
+    HZ[TrueZONE HZ221 zone panel<br/>dampers, staging, O/B, Em heat]
+    HP[Lennox heat pump + CBX27UH<br/>air handler + electric strips]
+    Nuki[Nuki locks - front and back]
+    ZigS[Zigbee: siren, smoke/CO, leak,<br/>extra contacts, motion]
+    Wired[Wired from old VISTA:<br/>front door, side door, PIR, bell]
+    Cams[NDAA PoE cameras<br/>no-internet VLAN]
+  end
+
+  %% ---------- services ----------
+  subgraph Services[dobby services - forensic layer, HA-independent]
+    Ing[nuki-ingestor<br/>normalizes local lock events]
+    Corr[event-correlator<br/>unlock-person matching,<br/>intrusion mirror, device history]
+    PG[(PostgreSQL system of record<br/>audit tables + hash chain)]
+    Graf[Grafana<br/>security + ops dashboards]
+    Arc[archive-job<br/>age encrypt, verify-before-delete,<br/>chain seal / verify / gc]
+    Media[(LUKS media disk)]
+  end
+
+  %% ---------- offsite ----------
+  subgraph Offsite[Outbound-only, encrypted]
+    B2[(Backblaze B2 - Object Lock WORM<br/>clips, nightly DB dumps, chain heads)]
+    WP[Web Push relays - APNs/FCM<br/>ciphertext payloads only]
+  end
+
+  %% client paths
+  Phone -->|WireGuard tunnel| TS
+  Tablet -->|LAN or tailnet HTTPS| TS
+  Laptop -->|tailnet| TS
+  TS -->|forwards to 127.0.0.1| BFF
+  BFF <-->|WebSocket live state + REST commands<br/>HA token never leaves the BFF| HA
+  BFF -->|WebRTC offer proxy| Frig
+  BFF -->|VAPID push| WP
+  WP -.->|tiered notifications| Phone
+  HA -->|notify.dobby_push REST + shared secret| BFF
+
+  %% brain internals and bus
+  Alarmo --- HA
+  Pkgs --- HA
+  HA <-->|state + commands| MQTT
+  HA <-->|ESPHome native API| Kon
+  HA <-->|websocket| ZUI
+  Alarmo -->|alarmo/state| MQTT
+  Pkgs -->|dobby/events/#| MQTT
+
+  %% bus producers and consumers
+  Z2M <--> MQTT
+  Frig -->|frigate/events| MQTT
+  Nuki -->|nuki/#| MQTT
+  MQTT --> Ing
+  MQTT --> Corr
+
+  %% radios and wires
+  ZUI <-->|Z-Wave radio| T61
+  ZUI <-->|Z-Wave radio| T62
+  T61 -->|24V zone call| HZ
+  T62 -->|24V zone call| HZ
+  HZ -->|staging + reversing valve| HP
+  Z2M <-->|Zigbee radio| ZigS
+  Kon ---|12V supervised loops| Wired
+  Cams -->|RTSP| Frig
+
+  %% data plane
+  Ing --> PG
+  Corr --> PG
+  Frig -->|clips + snapshots| Media
+  Graf --> PG
+  Arc --> PG
+  Arc --> Media
+  Arc -->|rclone S3, PutObject-only key| B2

@@ -1,0 +1,104 @@
+# Konnected retrofit of the old VISTA wired plant (docs/13). Copy to the
+# ESPHome dashboard, set secrets, and VERIFY EVERY PIN against your Konnected
+# model's printed zone map before flashing — the numbers below follow the
+# Alarm Panel Pro's common template but boards differ by revision.
+#
+# Zone map (from the VISTA keypad card): 1 front door · 2 side door · 3 PIR.
+# Entity names below are chosen so HA entity ids match the rest of the repo
+# (binary_sensor.front_door_contact / side_door_contact / foyer_motion).
+#
+# HUB-DOWN FALLBACK: HA/Alarmo is the brain (entry delays, modes, duress).
+# But if the API is disconnected while the house is armed, this board sirens
+# LOCALLY on a door opening — a hub crash must not silence the alarm. The
+# armed flag is synced by alarm.yaml (alarm_sync_fallback_flag) and survives
+# reboots. Fallback deliberately skips the entry delay.
+
+esphome:
+  name: konnected-alarm
+  friendly_name: Konnected Alarm
+
+esp32:
+  board: esp32dev
+
+# Prefer the Pro's Ethernet (uncomment, then REMOVE wifi:) — a security board
+# should not depend on Wi-Fi. Pin/clk values: see Konnected's ESPHome docs.
+# ethernet:
+#   type: LAN8720
+#   mdc_pin: GPIO23
+#   mdio_pin: GPIO18
+#   clk_mode: GPIO17_OUT
+#   phy_addr: 0
+#   power_pin: GPIO5
+
+wifi:
+  ssid: CHANGE_ME
+  password: CHANGE_ME
+
+api:
+  encryption:
+    key: CHANGE_ME_32_byte_base64
+
+ota:
+  - platform: esphome
+    password: CHANGE_ME
+
+logger:
+
+script:
+  # 3-minute capped local siren; restart-safe; silenced on disarm via the flag.
+  - id: fallback_siren
+    mode: restart
+    then:
+      - switch.turn_on: siren_out
+      - delay: 180s
+      - switch.turn_off: siren_out
+  # Fallback gate: only siren when armed AND the hub is unreachable.
+  - id: maybe_fallback
+    then:
+      - if:
+          condition:
+            and:
+              - switch.is_on: armed_flag
+              - not:
+                  api.connected:
+          then:
+            - script.execute: fallback_siren
+
+switch:
+  # Set by alarm.yaml when Alarmo arms away/night; cleared on disarm.
+  - platform: template
+    name: Alarm Fallback Armed
+    id: armed_flag
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_off:
+      - switch.turn_off: siren_out
+  # The old VISTA bell circuit, re-landed on the Konnected alarm output.
+  - platform: gpio
+    name: Dobby Siren Out
+    id: siren_out
+    pin: GPIO32          # ALARM1 output on the Pro — VERIFY
+    restore_mode: ALWAYS_OFF
+
+binary_sensor:
+  - platform: gpio
+    name: Front Door Contact
+    device_class: door
+    pin: { number: GPIO4, mode: INPUT_PULLUP }    # zone 1 — VERIFY
+    filters: [delayed_on_off: 50ms]
+    on_press:
+      - script.execute: maybe_fallback
+  - platform: gpio
+    name: Side Door Contact
+    device_class: door
+    pin: { number: GPIO2, mode: INPUT_PULLUP }    # zone 2 — VERIFY
+    filters: [delayed_on_off: 50ms]
+    on_press:
+      - script.execute: maybe_fallback
+  - platform: gpio
+    name: Foyer Motion
+    device_class: motion
+    pin: { number: GPIO15, mode: INPUT_PULLUP }   # zone 3 — VERIFY
+    filters: [delayed_on_off: 100ms]
+    # Motion deliberately does NOT trigger the fallback: a hub-down pet or
+    # HVAC draft must not siren the house; perimeter contacts are the tell.

@@ -32,20 +32,24 @@ rule).
 
 1. **Tamper-evident audit chain** — **landed**
    (`services/archive-job/audit_chain.py`): nightly `chain-seal` before the
-   dump anchors heads offsite; monthly `chain-verify` recomputes from genesis.
-   Remaining from this item: audit retention GC (its own slice).
+   dump anchors heads offsite; monthly `chain-verify` recomputes the chain;
+   monthly `chain-gc` prunes only sealed+expired rows behind a checkpoint and
+   refuses to run on a dirty verify.
 2. **WebAuthn passkeys + per-user roles** — **landed** (`users.ts`,
    `webauthn.ts`): passkey step-up bound to the pinned RP ID with passphrase
    fallback; guest sessions are role-blocked from locks/arming server-side;
    commands are attributed (who/role/what) to `panel-commands.jsonl`.
    Remaining from this item: ingest the attribution log into `device_events`
    under the hash chain (its own slice).
-3. **Life-safety package** — smoke/CO/leak sensors, unconditional siren +
-   critical push regardless of arm state (safety outranks security).
+3. **Life-safety package** — **landed** (config:
+   `packages/life_safety.yaml`; unconditional siren + HVAC-off + critical
+   push + offline-sensor watch). Remaining: buy the Zigbee smoke/CO/leak
+   sensors named in the package (docs/09).
 4. **Power + connectivity resilience** — NUT-driven clean shutdown (protects
    the LUKS/Postgres evidence store), USB-LTE dual-WAN for critical pushes.
-5. **Duress automation** — dedicated Alarmo user code whose disarm fires a
-   silent critical alert to the other adults' phones.
+5. **Duress automation** — **landed** (`alarm_duress_silent_alert` +
+   docs/13): the "Duress" Alarmo user's disarm alerts the other adults
+   silently. Limitation stands: alerts humans, not a dispatch center.
 6. **Bus hardening** — per-service Mosquitto credentials + ACLs (today one
    shared user can publish `alarmo/state`), S2-only Z-Wave joins, Zigbee
    install codes where supported.
