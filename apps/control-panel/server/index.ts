@@ -1,6 +1,7 @@
 // Control-panel BFF. Serves the PWA, proxies HA (live state + allow-listed
 // commands), proxies go2rtc WebRTC for live camera, and fans out Web Push.
 // The browser never holds the HA token and never speaks a device protocol.
+import { appendFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify from "fastify";
@@ -10,7 +11,7 @@ import { registerPush } from "./push.js";
 import { registerAuth, needsStepUp, isFresh } from "./auth.js";
 import { registerWebAuthn } from "./webauthn.js";
 import { openUserStore, roleAllows } from "./users.js";
-import { PORT, GO2RTC_URL, CAMERAS, STEP_UP_TTL_MS, USERS_STORE } from "./config.js";
+import { PORT, GO2RTC_URL, CAMERAS, STEP_UP_TTL_MS, USERS_STORE, COMMAND_LOG } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Trust only the loopback proxy (tailscale serve) so req.ip = the real client
@@ -57,7 +58,14 @@ app.post("/api/command", async (req, reply) => {
     reply.code(401); return { error: "step_up_required", stepUp: true };
   }
   try {
-    return await ha.callService(entity_id, service, data ?? {});
+    const result = await ha.callService(entity_id, service, data ?? {});
+    // Attribution: which person, in which role, did what. Best-effort append —
+    // the command must not fail because the log disk hiccuped.
+    appendFile(COMMAND_LOG, JSON.stringify({
+      ts: new Date().toISOString(), sub: req.session?.sub, role: req.session?.role,
+      entity_id, service,
+    }) + "\n").catch((e) => app.log.warn(`command log: ${(e as Error).message}`));
+    return result;
   } catch (e) {
     reply.code(400);
     return { error: (e as Error).message };

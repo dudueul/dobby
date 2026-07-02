@@ -33,6 +33,9 @@ export const USERS_STORE = process.env.USERS_STORE ?? "/data/users.json";
 // WebAuthn RP ID — pin to the ts.net hostname (docs/14); renaming it later
 // invalidates every registered passkey. Empty = derive from ALLOWED_ORIGINS.
 export const WEBAUTHN_RP_ID = process.env.WEBAUTHN_RP_ID ?? "";
+// Append-only attribution log of panel commands (who/role/what), on the
+// persisted volume so it survives restarts and rides the nightly backups.
+export const COMMAND_LOG = process.env.COMMAND_LOG ?? "/data/panel-commands.jsonl";
 
 // Entities the panel may read AND the only ones state is forwarded for.
 export const ENTITY_ALLOW: string[] = [
