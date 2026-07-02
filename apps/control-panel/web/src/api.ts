@@ -34,11 +34,11 @@ export function useLiveState(): { states: StateMap; connected: boolean } {
   return { states, connected };
 }
 
-export async function login(passphrase: string): Promise<boolean> {
+export async function login(passphrase: string, user?: string): Promise<boolean> {
   const res = await fetch("/api/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ passphrase }),
+    body: JSON.stringify({ passphrase, user: user || undefined }),
   });
   return res.ok;
 }

@@ -28,6 +28,8 @@ export const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS ?? 12 * 60 * 60 
 export const STEP_UP_TTL_MS = Number(process.env.STEP_UP_TTL_MS ?? 2 * 60 * 1000);
 // Secure cookie flag; requires HTTPS. Only set false for a plain-HTTP LAN setup.
 export const COOKIE_SECURE = (process.env.COOKIE_SECURE ?? "true") !== "false";
+// Household users (roles + passkeys) persist beside the push subscriptions.
+export const USERS_STORE = process.env.USERS_STORE ?? "/data/users.json";
 
 // Entities the panel may read AND the only ones state is forwarded for.
 export const ENTITY_ALLOW: string[] = [

@@ -8,7 +8,8 @@ import fstatic from "@fastify/static";
 import { HaClient } from "./ha.js";
 import { registerPush } from "./push.js";
 import { registerAuth, needsStepUp, isFresh } from "./auth.js";
-import { PORT, GO2RTC_URL, CAMERAS, STEP_UP_TTL_MS } from "./config.js";
+import { openUserStore, roleAllows } from "./users.js";
+import { PORT, GO2RTC_URL, CAMERAS, STEP_UP_TTL_MS, USERS_STORE } from "./config.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Trust only the loopback proxy (tailscale serve) so req.ip = the real client
@@ -18,7 +19,8 @@ const ha = new HaClient();
 ha.start();
 
 // Authenticate the panel first: every /api route below is gated (fail-closed).
-registerAuth(app);
+const users = openUserStore(USERS_STORE);
+registerAuth(app, users);
 
 // Snapshot of current allow-listed state.
 app.get("/api/state", async () => ha.snapshot());
@@ -42,6 +44,11 @@ app.post("/api/command", async (req, reply) => {
     entity_id?: string; service?: string; data?: Record<string, unknown>;
   };
   if (!entity_id || !service) { reply.code(400); return { error: "entity_id and service required" }; }
+  // Role gate first: a guest session physically cannot reach locks/arming,
+  // no matter how fresh it is.
+  if (!roleAllows(req.session?.role ?? "guest", service)) {
+    reply.code(403); return { error: "forbidden_for_role" };
+  }
   // Sensitive services (unlock/arm) require a *fresh* session — server-side
   // step-up, enforced regardless of what the client UI does.
   if (needsStepUp(service) && !(req.session && isFresh(req.session, Date.now(), STEP_UP_TTL_MS))) {

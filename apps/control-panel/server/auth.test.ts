@@ -8,7 +8,8 @@ import {
 } from "./auth.js";
 
 const SECRET = "unit-secret";
-const at = (now: number, ttl = 10_000) => ({ sub: "admin", authAt: now, exp: now + ttl });
+const at = (now: number, ttl = 10_000) =>
+  ({ sub: "admin", role: "admin" as const, authAt: now, exp: now + ttl });
 
 test("verifySession_acceptsAFreshlySignedToken", () => {
   const s = at(1000);

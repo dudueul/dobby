@@ -19,11 +19,12 @@ export default function App() {
 }
 
 function Login({ onOk }: { onOk: () => void }) {
+  const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (await login(pass)) onOk();
+    if (await login(pass, user)) onOk();
     else setErr("Invalid passphrase");
   }
   return (
@@ -31,9 +32,14 @@ function Login({ onOk }: { onOk: () => void }) {
       <h1>dobby</h1>
       <form onSubmit={submit}>
         <input
+          type="text" value={user} placeholder="Name (blank = admin)" autoComplete="username"
+          onChange={(e) => setUser(e.target.value)}
+          style={{ width: "100%", padding: 12, fontSize: 16 }}
+        />
+        <input
           type="password" value={pass} autoFocus placeholder="Passphrase"
           onChange={(e) => setPass(e.target.value)}
-          style={{ width: "100%", padding: 12, fontSize: 16 }}
+          style={{ width: "100%", padding: 12, fontSize: 16, marginTop: 8 }}
         />
         <button style={{ marginTop: 12, width: "100%", padding: 12 }}>Unlock panel</button>
       </form>
