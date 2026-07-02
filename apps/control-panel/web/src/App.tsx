@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useLiveState, sendCommand, enablePush, login, logout, isAuthed } from "./api";
+import { useLiveState, sendCommand, enablePush, login, logout, isAuthed, registerPasskey } from "./api";
 import { DoorTile } from "./components/DoorTile";
 import { ClimateTile } from "./components/ClimateTile";
 import { CameraTile } from "./components/CameraTile";
@@ -19,11 +19,12 @@ export default function App() {
 }
 
 function Login({ onOk }: { onOk: () => void }) {
+  const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [err, setErr] = useState("");
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (await login(pass)) onOk();
+    if (await login(pass, user)) onOk();
     else setErr("Invalid passphrase");
   }
   return (
@@ -31,9 +32,14 @@ function Login({ onOk }: { onOk: () => void }) {
       <h1>dobby</h1>
       <form onSubmit={submit}>
         <input
+          type="text" value={user} placeholder="Name (blank = admin)" autoComplete="username"
+          onChange={(e) => setUser(e.target.value)}
+          style={{ width: "100%", padding: 12, fontSize: 16 }}
+        />
+        <input
           type="password" value={pass} autoFocus placeholder="Passphrase"
           onChange={(e) => setPass(e.target.value)}
-          style={{ width: "100%", padding: 12, fontSize: 16 }}
+          style={{ width: "100%", padding: 12, fontSize: 16, marginTop: 8 }}
         />
         <button style={{ marginTop: 12, width: "100%", padding: 12 }}>Unlock panel</button>
       </form>
@@ -66,6 +72,9 @@ function Panel({ onSignOut }: { onSignOut: () => void }) {
         </select>
         <button onClick={() => enablePush().then((ok) => alert(ok ? "Push enabled" : "Push unavailable"))}>
           Enable alerts
+        </button>
+        <button onClick={() => registerPasskey().then((ok) => alert(ok ? "Passkey added" : "Passkey setup failed"))}>
+          Add passkey
         </button>
         <button onClick={onSignOut}>Sign out</button>
       </header>

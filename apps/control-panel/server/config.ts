@@ -28,6 +28,14 @@ export const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS ?? 12 * 60 * 60 
 export const STEP_UP_TTL_MS = Number(process.env.STEP_UP_TTL_MS ?? 2 * 60 * 1000);
 // Secure cookie flag; requires HTTPS. Only set false for a plain-HTTP LAN setup.
 export const COOKIE_SECURE = (process.env.COOKIE_SECURE ?? "true") !== "false";
+// Household users (roles + passkeys) persist beside the push subscriptions.
+export const USERS_STORE = process.env.USERS_STORE ?? "/data/users.json";
+// WebAuthn RP ID — pin to the ts.net hostname (docs/14); renaming it later
+// invalidates every registered passkey. Empty = derive from ALLOWED_ORIGINS.
+export const WEBAUTHN_RP_ID = process.env.WEBAUTHN_RP_ID ?? "";
+// Append-only attribution log of panel commands (who/role/what), on the
+// persisted volume so it survives restarts and rides the nightly backups.
+export const COMMAND_LOG = process.env.COMMAND_LOG ?? "/data/panel-commands.jsonl";
 
 // Entities the panel may read AND the only ones state is forwarded for.
 export const ENTITY_ALLOW: string[] = [

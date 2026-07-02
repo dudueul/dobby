@@ -79,9 +79,21 @@ Prod (Docker; built PWA served by the BFF on :8088) — wired into the root
 - **Web Push = informational alerts** only; keep the HA Companion app for
   security-critical (Time-Sensitive/Critical) alarms.
 
+## Users, roles, passkeys
+
+- **Login**: name + passphrase (blank name = the env-bootstrapped `admin`).
+  Admins create users via `POST /api/users {sub, role, passphrase}`.
+- **Roles** (enforced server-side in `/api/command`): `admin`/`family` = full
+  panel; `guest` = climate + lights only — never locks, arming, house-mode.
+- **Passkeys**: "Add passkey" in the header registers Face ID/fingerprint for
+  the signed-in user; sensitive actions then step up via assertion instead of
+  the passphrase prompt. Requires the HTTPS origin from `tailscale serve`
+  (docs/14) — pin `WEBAUTHN_RP_ID` to the ts.net hostname (permanent).
+- **Attribution**: every command appends who/role/what to
+  `/data/panel-commands.jsonl`.
+
 ## Follow-up slices
 
-**WebAuthn/passkey** (replace the passphrase step-up with Face ID), **TLS
-termination** (HTTPS reverse proxy so Secure cookies + PWA install work),
-persisted push subscriptions, multi-user roles, capability-driven UI for
-multi-zone HVAC, and icons. See the repo gap analysis for the prioritized list.
+Ingest the attribution log into `device_events` (under the audit hash chain),
+passkey management UI (list/revoke credentials), capability-driven UI for
+multi-zone HVAC, icons. See docs/15 for the security backlog.

@@ -10,8 +10,9 @@ import {
   SESSION_SECRET, ADMIN_PASSPHRASE_HASH, ALLOWED_ORIGINS,
   SESSION_TTL_MS, STEP_UP_TTL_MS, COOKIE_SECURE, SENSITIVE_SERVICES,
 } from "./config.js";
+import { hashPassphrase, type Role, type UserStore } from "./users.js";
 
-export interface Session { sub: string; authAt: number; exp: number }
+export interface Session { sub: string; role: Role; authAt: number; exp: number }
 
 declare module "fastify" {
   interface FastifyRequest { session?: Session }
@@ -55,7 +56,8 @@ export function verifySession(token: string | undefined, secret: string, now: nu
   if (!timingSafeEqualStr(token.slice(dot + 1), expected)) return null;
   try {
     const s = JSON.parse(Buffer.from(body, "base64url").toString()) as Session;
-    return typeof s.exp === "number" && s.exp > now ? s : null;
+    if (typeof s.exp !== "number" || s.exp <= now) return null;
+    return { ...s, role: s.role ?? "admin" };
   } catch { return null; }
 }
 
@@ -111,7 +113,15 @@ export function authConfigured(): boolean {
   return Boolean(SESSION_SECRET && ADMIN_PASSPHRASE_HASH);
 }
 
-export function registerAuth(app: FastifyInstance): void {
+/** Issue (or refresh) the signed session cookie. Also the seam the passkey
+ * step-up uses to mint a *fresh* session after a verified assertion. */
+export function issueSession(reply: FastifyReply, sub: string, role: Role, now: number): Session {
+  const s: Session = { sub, role, authAt: now, exp: now + SESSION_TTL_MS };
+  setSessionCookie(reply, signSession(s, SESSION_SECRET), SESSION_TTL_MS);
+  return s;
+}
+
+export function registerAuth(app: FastifyInstance, users?: UserStore): void {
   app.post("/api/login", async (req, reply) => {
     const now = Date.now();
     if (!authConfigured()) { reply.code(503); return { error: "auth not configured" }; }
@@ -130,14 +140,42 @@ export function registerAuth(app: FastifyInstance): void {
       reply.code(403); return { error: "bad origin" };
     }
     if (rateLimited(req.ip, now)) { reply.code(429); return { error: "too many attempts" }; }
-    const pass = (req.body as { passphrase?: string } | undefined)?.passphrase ?? "";
-    if (!verifyPassphrase(pass, ADMIN_PASSPHRASE_HASH)) {
+    const body = (req.body ?? {}) as { passphrase?: string; user?: string };
+    const pass = body.passphrase ?? "";
+    // "admin" is the env-bootstrapped account; everyone else lives in the store.
+    const who = body.user?.trim() || "admin";
+    let role: Role = "admin";
+    let ok = false;
+    if (who === "admin") {
+      ok = verifyPassphrase(pass, ADMIN_PASSPHRASE_HASH);
+    } else {
+      const u = users?.find(who);
+      ok = Boolean(u?.passHash) && verifyPassphrase(pass, u!.passHash!);
+      role = u?.role ?? "guest";
+    }
+    if (!ok) {
       recordFail(req.ip, now); reply.code(401); return { error: "invalid" };
     }
     attempts.delete(req.ip);
-    const s: Session = { sub: "admin", authAt: now, exp: now + SESSION_TTL_MS };
-    setSessionCookie(reply, signSession(s, SESSION_SECRET), SESSION_TTL_MS);
-    return { ok: true, freshForMs: STEP_UP_TTL_MS };
+    const s = issueSession(reply, who, role, now);
+    return { ok: true, role: s.role, freshForMs: STEP_UP_TTL_MS };
+  });
+
+  // Household user management — admin only. Passkeys register separately.
+  app.get("/api/users", async (req, reply) => {
+    if (req.session?.role !== "admin") { reply.code(403); return { error: "admin only" }; }
+    return (users?.all() ?? []).map((u) => ({ sub: u.sub, role: u.role, passkeys: u.creds.length }));
+  });
+
+  app.post("/api/users", async (req, reply) => {
+    if (req.session?.role !== "admin") { reply.code(403); return { error: "admin only" }; }
+    const b = (req.body ?? {}) as { sub?: string; role?: Role; passphrase?: string };
+    if (!users || !b.sub || !b.role || !b.passphrase || b.sub === "admin") {
+      reply.code(400); return { error: "sub, role, passphrase required" };
+    }
+    users.upsert({ sub: b.sub, role: b.role, passHash: hashPassphrase(b.passphrase),
+                   creds: users.find(b.sub)?.creds ?? [] });
+    return { ok: true };
   });
 
   app.post("/api/logout", async (_req, reply) => {
