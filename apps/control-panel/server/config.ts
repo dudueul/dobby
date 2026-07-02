@@ -41,7 +41,8 @@ export const COMMAND_LOG = process.env.COMMAND_LOG ?? "/data/panel-commands.json
 export const ENTITY_ALLOW: string[] = [
   "lock.front_door_nuki",
   "lock.back_door_nuki",
-  "climate.hvac",
+  "climate.zone_1",      // two-zone heat pump behind the TrueZONE HZ221 (docs/10)
+  "climate.zone_2",
   "alarm_control_panel.dobby",
   "input_select.house_mode",
   "light.front_porch",

@@ -8,7 +8,7 @@ automation:
     alias: "Audit: publish HVAC mode changes"
     trigger:
       - platform: state
-        entity_id: climate.hvac
+        entity_id: [climate.zone_1, climate.zone_2]
     condition:
       - condition: template
         value_template: >-
@@ -17,7 +17,7 @@ automation:
     action:
       - service: mqtt.publish
         data:
-          topic: dobby/events/climate/hvac
+          topic: "dobby/events/climate/{{ trigger.entity_id.split('.')[1] }}"
           payload: >-
             {{ {'event_type': 'state_change',
                 'old_state': trigger.from_state.state,
@@ -28,7 +28,7 @@ automation:
     alias: "Audit: publish HVAC setpoint changes"
     trigger:
       - platform: state
-        entity_id: climate.hvac
+        entity_id: [climate.zone_1, climate.zone_2]
         attribute: temperature
     condition:
       - condition: template
@@ -36,7 +36,7 @@ automation:
     action:
       - service: mqtt.publish
         data:
-          topic: dobby/events/climate/hvac
+          topic: "dobby/events/climate/{{ trigger.entity_id.split('.')[1] }}"
           payload: >-
             {{ {'event_type': 'setpoint_change',
                 'old_state': trigger.from_state.attributes.temperature | string,

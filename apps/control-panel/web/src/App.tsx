@@ -83,7 +83,8 @@ function Panel({ onSignOut }: { onSignOut: () => void }) {
         <AlarmTile e={states["alarm_control_panel.dobby"]} />
         <DoorTile e={states["lock.front_door_nuki"]} />
         <DoorTile e={states["lock.back_door_nuki"]} />
-        <ClimateTile e={states["climate.hvac"]} />
+        <ClimateTile e={states["climate.zone_1"]} />
+        <ClimateTile e={states["climate.zone_2"]} />
       </section>
 
       <h2>Cameras</h2>

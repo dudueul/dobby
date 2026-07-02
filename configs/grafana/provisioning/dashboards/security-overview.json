@@ -64,7 +64,7 @@
     },
     {
       "id": 5,
-      "title": "HVAC activity (latest)",
+      "title": "HVAC activity by zone (latest)",
       "type": "table",
       "datasource": { "type": "postgres", "uid": "dobby-audit" },
       "gridPos": { "h": 8, "w": 24, "x": 0, "y": 14 },
@@ -72,7 +72,7 @@
         {
           "refId": "A",
           "format": "table",
-          "rawSql": "SELECT event_time, event_type, old_state, new_state, (raw->>'by_user')::boolean AS by_human FROM device_events WHERE device_key = 'hvac' ORDER BY event_time DESC LIMIT 15"
+          "rawSql": "SELECT event_time, device_key AS zone, event_type, old_state, new_state, (raw->>'by_user')::boolean AS by_human FROM device_events WHERE device_key IN ('zone_1','zone_2') ORDER BY event_time DESC LIMIT 15"
         }
       ]
     }
