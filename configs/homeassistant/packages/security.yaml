@@ -74,7 +74,10 @@ automation:
     alias: "Security: door left open"
     trigger:
       - platform: state
-        entity_id: [binary_sensor.front_door_contact, binary_sensor.back_door_contact]
+        entity_id:
+          - binary_sensor.front_door_contact   # wired via Konnected (docs/13)
+          - binary_sensor.side_door_contact    # wired via Konnected (docs/13)
+          - binary_sensor.back_door_contact
         to: "on"
         for: "00:05:00"
     action:
