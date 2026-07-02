@@ -18,8 +18,12 @@ area "dobby"). Configure **in the Alarmo UI**:
 | `armed_home` | perimeter contacts (instant) | no delays |
 
 - **Codes:** one per person (attribution + revocation), disarm-only codes for
-  guests. Alarmo has **no native duress code** (open feature request) — do not
-  promise a panic feature the system doesn't have.
+  guests. Alarmo has **no native duress code** (open feature request), so
+  dobby approximates one: create a user literally named **`Duress`** and hand
+  its code out as "the code you enter if someone forces you to disarm" — the
+  house disarms normally, nothing visible changes, and the other adults get a
+  silent critical alert (`alarm_duress_silent_alert` in `alarm.yaml`). Know
+  the limitation: it alerts humans; it does not dispatch anyone.
 - **MQTT:** enable Alarmo's MQTT option (state topic `alarmo/state`). The
   event-correlator subscribes to it so intrusion detection also runs *outside*
   HA (same independence rationale as the rest of the correlator).

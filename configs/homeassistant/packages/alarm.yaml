@@ -95,6 +95,26 @@ automation:
       - service: siren.turn_off
         target: { entity_id: siren.dobby_siren }
 
+  # Duress: create an Alarmo user literally named "Duress" (docs/13) and hand
+  # out its code as "the code you use if someone forces you to disarm". The
+  # house disarms normally and stays quiet — the other adults' phones get a
+  # critical alert. Nothing visible changes for the coercer.
+  - id: alarm_duress_silent_alert
+    alias: "Alarm: duress code used — silent critical alert"
+    trigger:
+      - platform: state
+        entity_id: alarm_control_panel.dobby
+        to: disarmed
+    condition:
+      - condition: template
+        value_template: "{{ (trigger.to_state.attributes.changed_by | default('')) == 'Duress' }}"
+    action:
+      - service: notify.dobby_push
+        data:
+          title: "⚠️ DURESS disarm"
+          message: "The duress code disarmed the house. Someone may be under coercion — do NOT call the house; check cameras, call for help."
+          data: { tier: critical, tag: duress }
+
   # Operational incident: the alarm itself going dark is a critical event
   # (mirrors the climate.yaml unavailable pattern).
   - id: alarm_unavailable_incident
