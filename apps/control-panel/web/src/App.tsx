@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useLiveState, sendCommand, enablePush, login, logout, isAuthed } from "./api";
+import { useLiveState, sendCommand, enablePush, login, logout, isAuthed, registerPasskey } from "./api";
 import { DoorTile } from "./components/DoorTile";
 import { ClimateTile } from "./components/ClimateTile";
 import { CameraTile } from "./components/CameraTile";
@@ -72,6 +72,9 @@ function Panel({ onSignOut }: { onSignOut: () => void }) {
         </select>
         <button onClick={() => enablePush().then((ok) => alert(ok ? "Push enabled" : "Push unavailable"))}>
           Enable alerts
+        </button>
+        <button onClick={() => registerPasskey().then((ok) => alert(ok ? "Passkey added" : "Passkey setup failed"))}>
+          Add passkey
         </button>
         <button onClick={onSignOut}>Sign out</button>
       </header>

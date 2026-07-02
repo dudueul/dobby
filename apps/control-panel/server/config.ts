@@ -30,6 +30,9 @@ export const STEP_UP_TTL_MS = Number(process.env.STEP_UP_TTL_MS ?? 2 * 60 * 1000
 export const COOKIE_SECURE = (process.env.COOKIE_SECURE ?? "true") !== "false";
 // Household users (roles + passkeys) persist beside the push subscriptions.
 export const USERS_STORE = process.env.USERS_STORE ?? "/data/users.json";
+// WebAuthn RP ID — pin to the ts.net hostname (docs/14); renaming it later
+// invalidates every registered passkey. Empty = derive from ALLOWED_ORIGINS.
+export const WEBAUTHN_RP_ID = process.env.WEBAUTHN_RP_ID ?? "";
 
 // Entities the panel may read AND the only ones state is forwarded for.
 export const ENTITY_ALLOW: string[] = [

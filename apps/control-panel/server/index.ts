@@ -8,6 +8,7 @@ import fstatic from "@fastify/static";
 import { HaClient } from "./ha.js";
 import { registerPush } from "./push.js";
 import { registerAuth, needsStepUp, isFresh } from "./auth.js";
+import { registerWebAuthn } from "./webauthn.js";
 import { openUserStore, roleAllows } from "./users.js";
 import { PORT, GO2RTC_URL, CAMERAS, STEP_UP_TTL_MS, USERS_STORE } from "./config.js";
 
@@ -21,6 +22,7 @@ ha.start();
 // Authenticate the panel first: every /api route below is gated (fail-closed).
 const users = openUserStore(USERS_STORE);
 registerAuth(app, users);
+registerWebAuthn(app, users);
 
 // Snapshot of current allow-listed state.
 app.get("/api/state", async () => ha.snapshot());

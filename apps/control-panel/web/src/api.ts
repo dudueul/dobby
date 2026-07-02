@@ -1,6 +1,7 @@
 // Thin client over the BFF. The browser only ever talks to /api/* — never to HA
 // or a device directly. Live state via SSE; commands via POST; camera via WebRTC.
 import { useEffect, useState } from "react";
+import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 
 export interface Entity {
   entity_id: string;
@@ -40,7 +41,39 @@ export async function login(passphrase: string, user?: string): Promise<boolean>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ passphrase, user: user || undefined }),
   });
+  // Remember who signed in so the step-up fallback re-authenticates the same user.
+  if (res.ok) localStorage.setItem("dobby_user", user || "");
   return res.ok;
+}
+
+/** Register a passkey (Face ID / fingerprint) for the signed-in user. */
+export async function registerPasskey(): Promise<boolean> {
+  const opt = await fetch("/api/webauthn/register/options", { method: "POST" });
+  if (!opt.ok) return false;
+  try {
+    const attestation = await startRegistration(await opt.json());
+    const res = await fetch("/api/webauthn/register/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(attestation),
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
+/** Step up with a passkey assertion; false = no passkey or user cancelled. */
+async function stepUpWithPasskey(): Promise<boolean> {
+  const opt = await fetch("/api/webauthn/stepup/options", { method: "POST" });
+  if (!opt.ok) return false;
+  try {
+    const assertion = await startAuthentication(await opt.json());
+    const res = await fetch("/api/webauthn/stepup/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(assertion),
+    });
+    return res.ok;
+  } catch { return false; }
 }
 
 export async function logout(): Promise<void> {
@@ -62,10 +95,13 @@ export async function sendCommand(entity_id: string, service: string, data?: Rec
   if (res.status === 401) {
     const body = (await res.json().catch(() => ({}))) as { stepUp?: boolean };
     if (body.stepUp) {
-      // Sensitive action: re-confirm the passphrase (Face ID/WebAuthn is a
-      // follow-up slice), then retry once.
-      const pass = window.prompt("Confirm your passphrase to continue");
-      if (!pass || !(await login(pass))) throw new Error("confirmation required");
+      // Sensitive action: passkey (Face ID) first; passphrase as the fallback
+      // for users without one. Either path mints a fresh session; retry once.
+      if (!(await stepUpWithPasskey())) {
+        const pass = window.prompt("Confirm your passphrase to continue");
+        const user = localStorage.getItem("dobby_user") ?? "";
+        if (!pass || !(await login(pass, user))) throw new Error("confirmation required");
+      }
       res = await post();
     } else {
       throw new Error("session expired — sign in again");
